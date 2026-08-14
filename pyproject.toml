@@ -1,0 +1,29 @@
+[build-system]
+requires = ["setuptools>=80"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "kz-ecomops-control-tower"
+version = "0.1.0"
+description = "Multi-channel order reconciliation and e-commerce operations analytics."
+readme = "README.md"
+requires-python = ">=3.13,<3.14"
+license = "MIT"
+authors = [
+    { name = "Klaus Zanaj" }
+]
+dependencies = [
+    "pandas==3.0.5"
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest==9.1.1"
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra --strict-markers"
