@@ -54,7 +54,7 @@ Non verranno usati dati reali e non verranno installati strumenti senza averne p
 **Attività:**
 
 - inizializzare Git soltanto dopo una nuova approvazione;
-- preparare il futuro repository con il nome scelto `ecommerce-operations-control-tower`, senza rinominare automaticamente la cartella locale attuale;
+- preparare il futuro repository con il nome scelto `kz-ecomops-control-tower`, senza rinominare automaticamente la cartella locale attuale;
 - creare cartelle per applicazione, test, dati sintetici e documentazione;
 - creare un ambiente virtuale Python, cioè uno spazio isolato per le dipendenze del progetto;
 - definire le dipendenze iniziali e le relative versioni;
@@ -251,7 +251,7 @@ L’ordine potrà cambiare leggermente durante la progettazione tecnica, ma ness
 2. **Nome descrittivo completo:** `KZ E-commerce Operations Control Tower`.
 3. **Sottotitolo:** `Multi-channel order reconciliation and e-commerce operations analytics.`
 4. **Branding:** `KZ` rappresenta le iniziali e il personal branding del creatore, senza un significato esteso.
-5. **Futuro repository GitHub:** `ecommerce-operations-control-tower`.
+5. **Futuro repository GitHub:** `kz-ecomops-control-tower`.
 6. **Cartella locale:** non deve essere rinominata automaticamente.
 7. **Interfaccia:** inglese.
 8. **Codice e struttura:** nomi di codice, colonne, cartelle e funzioni in inglese.

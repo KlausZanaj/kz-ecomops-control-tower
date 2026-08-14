@@ -155,7 +155,7 @@ La prima versione:
 - il nome descrittivo completo è **KZ E-commerce Operations Control Tower**;
 - il sottotitolo inglese è *Multi-channel order reconciliation and e-commerce operations analytics.*
 - `KZ` rappresenta le iniziali e il personal branding del creatore; non gli viene attribuito un significato esteso;
-- il nome previsto per il futuro repository GitHub è `ecommerce-operations-control-tower`;
+- il nome previsto per il futuro repository GitHub è `kz-ecomops-control-tower`;
 - la cartella locale attuale non verrà rinominata automaticamente;
 - l’interfaccia finale sarà in inglese;
 - codice, funzioni, cartelle e colonne useranno nomi in inglese;
