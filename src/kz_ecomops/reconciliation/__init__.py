@@ -27,6 +27,11 @@ from .rules_06_10 import (
     evaluate_rec_09,
     evaluate_rec_10,
 )
+from .engine import (
+    ReconciliationError,
+    ReconciliationErrorCode,
+    reconcile_dataset,
+)
 
 __all__ = [
     "AnomalyCode",
@@ -50,4 +55,7 @@ __all__ = [
     "evaluate_rec_08",
     "evaluate_rec_09",
     "evaluate_rec_10",
+    "ReconciliationError",
+    "ReconciliationErrorCode",
+    "reconcile_dataset",
 ]

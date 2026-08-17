@@ -11,6 +11,7 @@ import json
 import sqlite3
 from collections.abc import Mapping
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from enum import StrEnum
 from pathlib import Path
 from types import MappingProxyType
@@ -18,11 +19,22 @@ from types import MappingProxyType
 import pandas as pd
 
 from kz_ecomops.validation import CSV_SCHEMAS, DatasetValidationResult
+from kz_ecomops.reconciliation import (
+    AnomalyCode,
+    ProblemType,
+    RecordReference,
+    ReconciliationAnomaly,
+    ReconciliationResult,
+    ReviewStatus,
+    RuleCode,
+    Severity,
+)
 
 
 STORAGE_TABLES: Mapping[str, str] = MappingProxyType(
     {filename: filename.removesuffix(".csv") for filename in CSV_SCHEMAS}
 )
+ANOMALY_TABLE = "reconciliation_anomalies"
 
 
 class StorageErrorCode(StrEnum):
@@ -87,6 +99,23 @@ class StoredRecord:
         object.__setattr__(self, "values", MappingProxyType(dict(self.values)))
 
 
+@dataclass(frozen=True, slots=True)
+class AnomalyStorageWriteResult:
+    """Summarize inserted and idempotently existing anomaly records."""
+
+    inserted_count: int
+    existing_count: int
+
+
+@dataclass(frozen=True, slots=True)
+class StoredAnomaly:
+    """Expose one persisted anomaly with detection-history timestamps."""
+
+    anomaly: ReconciliationAnomaly
+    first_detected_at: datetime
+    last_detected_at: datetime
+
+
 def _quoted(identifier: str) -> str:
     return f'"{identifier.replace(chr(34), chr(34) * 2)}"'
 
@@ -116,6 +145,32 @@ def _table_statement(filename: str) -> str:
 def _create_schema(connection: sqlite3.Connection) -> None:
     for filename in CSV_SCHEMAS:
         connection.execute(_table_statement(filename))
+
+
+def _create_anomaly_schema(connection: sqlite3.Connection) -> None:
+    connection.execute(
+        f"""
+        CREATE TABLE IF NOT EXISTS {_quoted(ANOMALY_TABLE)} (
+            "anomaly_id" TEXT PRIMARY KEY,
+            "rule_code" TEXT NOT NULL,
+            "anomaly_code" TEXT NOT NULL,
+            "order_id" TEXT,
+            "platform" TEXT NOT NULL,
+            "problem_type" TEXT NOT NULL,
+            "description" TEXT NOT NULL,
+            "severity" TEXT NOT NULL,
+            "detected_at" TEXT NOT NULL,
+            "recommended_action" TEXT NOT NULL,
+            "review_status" TEXT NOT NULL CHECK (
+                "review_status" IN ('open', 'in_review', 'resolved', 'dismissed')
+            ),
+            "compared_values_json" TEXT NOT NULL,
+            "record_references_json" TEXT NOT NULL,
+            "first_detected_at" TEXT NOT NULL,
+            "last_detected_at" TEXT NOT NULL
+        )
+        """
+    )
 
 
 def initialize_database(database_path: str | Path) -> DatabaseSchemaResult:
@@ -358,4 +413,253 @@ def read_stored_records(
             values=dict(zip(columns, row[2:], strict=True)),
         )
         for row in rows
+    )
+
+
+def _utc_text(value: datetime) -> str:
+    return value.astimezone(timezone.utc).isoformat(timespec="seconds")
+
+
+def _compared_values_json(anomaly: ReconciliationAnomaly) -> str:
+    return json.dumps(
+        dict(anomaly.compared_values),
+        ensure_ascii=False,
+        sort_keys=True,
+        separators=(",", ":"),
+    )
+
+
+def _record_references_json(anomaly: ReconciliationAnomaly) -> str:
+    return json.dumps(
+        [
+            {
+                "filename": reference.filename,
+                "record_id": reference.record_id,
+                "row_number": reference.row_number,
+            }
+            for reference in anomaly.record_references
+        ],
+        ensure_ascii=False,
+        sort_keys=True,
+        separators=(",", ":"),
+    )
+
+
+def _anomaly_values(anomaly: ReconciliationAnomaly) -> tuple[str | None, ...]:
+    detected_at = _utc_text(anomaly.detected_at)
+    return (
+        anomaly.anomaly_id,
+        anomaly.rule_code.value,
+        anomaly.anomaly_code.value,
+        anomaly.order_id,
+        anomaly.platform,
+        anomaly.problem_type.value,
+        anomaly.description,
+        anomaly.severity.value,
+        detected_at,
+        anomaly.recommended_action,
+        anomaly.review_status.value,
+        _compared_values_json(anomaly),
+        _record_references_json(anomaly),
+        detected_at,
+        detected_at,
+    )
+
+
+def persist_reconciliation_result(
+    database_path: str | Path,
+    result: ReconciliationResult,
+) -> AnomalyStorageWriteResult:
+    """Atomically upsert deterministic anomalies while preserving review states."""
+
+    if not isinstance(result, ReconciliationResult):
+        raise TypeError("result must be a ReconciliationResult.")
+    path = Path(database_path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    columns = (
+        "anomaly_id",
+        "rule_code",
+        "anomaly_code",
+        "order_id",
+        "platform",
+        "problem_type",
+        "description",
+        "severity",
+        "detected_at",
+        "recommended_action",
+        "review_status",
+        "compared_values_json",
+        "record_references_json",
+        "first_detected_at",
+        "last_detected_at",
+    )
+    placeholders = ", ".join("?" for _ in columns)
+    update_columns = (
+        "rule_code",
+        "anomaly_code",
+        "order_id",
+        "platform",
+        "problem_type",
+        "description",
+        "severity",
+        "detected_at",
+        "recommended_action",
+        "compared_values_json",
+        "record_references_json",
+    )
+    updates = ", ".join(
+        f"{_quoted(column)} = excluded.{_quoted(column)}"
+        for column in update_columns
+    )
+    statement = (
+        f"INSERT INTO {_quoted(ANOMALY_TABLE)} "
+        f"({', '.join(_quoted(column) for column in columns)}) "
+        f"VALUES ({placeholders}) "
+        f"ON CONFLICT({_quoted('anomaly_id')}) DO UPDATE SET {updates}, "
+        '"first_detected_at" = MIN("first_detected_at", excluded."first_detected_at"), '
+        '"last_detected_at" = MAX("last_detected_at", excluded."last_detected_at")'
+    )
+    inserted = 0
+    existing = 0
+    try:
+        with sqlite3.connect(path) as connection:
+            _create_schema(connection)
+            _create_anomaly_schema(connection)
+            for anomaly in result.anomalies:
+                already_exists = connection.execute(
+                    f"SELECT 1 FROM {_quoted(ANOMALY_TABLE)} WHERE \"anomaly_id\" = ?",
+                    (anomaly.anomaly_id,),
+                ).fetchone()
+                connection.execute(statement, _anomaly_values(anomaly))
+                if already_exists is None:
+                    inserted += 1
+                else:
+                    existing += 1
+    except sqlite3.Error as error:
+        raise DatasetStorageError(
+            StorageErrorCode.DATABASE_ERROR,
+            "The anomaly transaction failed and was rolled back.",
+        ) from error
+    return AnomalyStorageWriteResult(inserted, existing)
+
+
+def _parse_datetime(value: str) -> datetime:
+    return datetime.fromisoformat(value)
+
+
+def read_stored_anomalies(
+    database_path: str | Path,
+) -> tuple[StoredAnomaly, ...]:
+    """Read stored anomalies in deterministic rule and source-reference order."""
+
+    path = Path(database_path)
+    if not path.is_file():
+        raise FileNotFoundError(f"SQLite database {str(path)!r} does not exist.")
+    selected = (
+        "anomaly_id",
+        "rule_code",
+        "anomaly_code",
+        "order_id",
+        "platform",
+        "problem_type",
+        "description",
+        "severity",
+        "detected_at",
+        "recommended_action",
+        "review_status",
+        "compared_values_json",
+        "record_references_json",
+        "first_detected_at",
+        "last_detected_at",
+    )
+    try:
+        with sqlite3.connect(path) as connection:
+            rows = connection.execute(
+                f"SELECT {', '.join(_quoted(column) for column in selected)} "
+                f"FROM {_quoted(ANOMALY_TABLE)} "
+                'ORDER BY "rule_code", "platform", COALESCE("order_id", \'\'), '
+                '"record_references_json", "anomaly_id"'
+            ).fetchall()
+    except sqlite3.Error as error:
+        raise DatasetStorageError(
+            StorageErrorCode.DATABASE_ERROR,
+            "Stored reconciliation anomalies could not be read safely.",
+        ) from error
+
+    stored: list[StoredAnomaly] = []
+    for row in rows:
+        compared_values = json.loads(row[11])
+        references = tuple(
+            RecordReference(
+                filename=item["filename"],
+                row_number=item["row_number"],
+                record_id=item["record_id"],
+            )
+            for item in json.loads(row[12])
+        )
+        anomaly = ReconciliationAnomaly(
+            anomaly_id=row[0],
+            rule_code=RuleCode(row[1]),
+            anomaly_code=AnomalyCode(row[2]),
+            order_id=row[3],
+            platform=row[4],
+            problem_type=ProblemType(row[5]),
+            description=row[6],
+            severity=Severity(row[7]),
+            detected_at=_parse_datetime(row[8]),
+            recommended_action=row[9],
+            review_status=ReviewStatus(row[10]),
+            compared_values=compared_values,
+            record_references=references,
+        )
+        stored.append(
+            StoredAnomaly(
+                anomaly=anomaly,
+                first_detected_at=_parse_datetime(row[13]),
+                last_detected_at=_parse_datetime(row[14]),
+            )
+        )
+    return tuple(stored)
+
+
+def update_anomaly_status(
+    database_path: str | Path,
+    anomaly_id: str,
+    review_status: ReviewStatus | str,
+) -> StoredAnomaly:
+    """Update one human review state without changing detected anomaly data."""
+
+    if not anomaly_id:
+        raise ValueError("anomaly_id must not be empty.")
+    try:
+        checked_status = (
+            review_status
+            if isinstance(review_status, ReviewStatus)
+            else ReviewStatus(review_status)
+        )
+    except (TypeError, ValueError) as error:
+        raise ValueError("review_status is not a supported review state.") from error
+    path = Path(database_path)
+    if not path.is_file():
+        raise FileNotFoundError(f"SQLite database {str(path)!r} does not exist.")
+    try:
+        with sqlite3.connect(path) as connection:
+            cursor = connection.execute(
+                f"UPDATE {_quoted(ANOMALY_TABLE)} SET \"review_status\" = ? "
+                'WHERE "anomaly_id" = ?',
+                (checked_status.value, anomaly_id),
+            )
+            if cursor.rowcount != 1:
+                raise KeyError(f"No stored anomaly exists for ID {anomaly_id!r}.")
+    except KeyError:
+        raise
+    except sqlite3.Error as error:
+        raise DatasetStorageError(
+            StorageErrorCode.DATABASE_ERROR,
+            "The anomaly review status could not be updated safely.",
+        ) from error
+    return next(
+        stored
+        for stored in read_stored_anomalies(path)
+        if stored.anomaly.anomaly_id == anomaly_id
     )
