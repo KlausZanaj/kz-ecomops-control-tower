@@ -41,6 +41,14 @@ from .relationships import (
     CsvRelationshipValidationResult,
     validate_csv_relationships,
 )
+from .report import (
+    DatasetValidationReport,
+    DatasetValidationResult,
+    FileValidationReport,
+    ValidationMessage,
+    ValidationStage,
+)
+from .dataset import validate_dataset_directory
 
 __all__ = [
     "CSV_SCHEMAS",
@@ -77,4 +85,10 @@ __all__ = [
     "CsvRelationshipFindingCode",
     "CsvRelationshipValidationResult",
     "validate_csv_relationships",
+    "DatasetValidationReport",
+    "DatasetValidationResult",
+    "FileValidationReport",
+    "ValidationMessage",
+    "ValidationStage",
+    "validate_dataset_directory",
 ]
