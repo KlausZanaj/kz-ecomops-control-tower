@@ -28,7 +28,7 @@ from kz_ecomops.storage import (
     read_stored_anomalies,
     update_anomaly_status,
 )
-from kz_ecomops.validation import validate_dataset_directory
+from kz_ecomops.validation import CSV_SCHEMAS, validate_dataset_directory
 
 
 PROJECT_ROOT = Path(__file__).parents[2]
@@ -42,6 +42,44 @@ def _validation(scenario: str = "rec-01-payment-amount-mismatch"):
 
 def _result(scenario: str = "rec-01-payment-amount-mismatch", reference_at: datetime = REFERENCE_AT):
     return reconcile_dataset(_validation(scenario), reference_at)
+
+
+def _collision_result(
+    directory: Path,
+    *,
+    reverse: bool = False,
+) -> ReconciliationResult:
+    directory.mkdir()
+    payments = [
+        {
+            "payment_id": "DUP-PAY",
+            "platform": "shopify",
+            "order_id": f"shopify:MISSING-{suffix}",
+            "source_order_id": f"MISSING-{suffix}",
+            "provider_transaction_id": "TXN-X",
+            "payment_method": "synthetic_card",
+            "payment_status": "succeeded",
+            "amount": "10.00",
+            "currency": "EUR",
+            "paid_at": "2026-03-01T10:00:00+00:00",
+            "created_at": "2026-03-01T09:59:00+00:00",
+            "updated_at": "2026-03-01T10:00:00+00:00",
+        }
+        for suffix in ("A", "B")
+    ]
+    if reverse:
+        payments.reverse()
+    rows = {filename: [] for filename in CSV_SCHEMAS}
+    rows["payments.csv"] = payments
+    for filename, schema in CSV_SCHEMAS.items():
+        pd.DataFrame(
+            rows[filename],
+            columns=schema.column_names,
+            dtype=str,
+        ).to_csv(directory / filename, index=False)
+    validation = validate_dataset_directory(directory)
+    assert validation.report.reconciliation_ready
+    return reconcile_dataset(validation, REFERENCE_AT)
 
 
 def test_persists_and_reads_deterministic_anomaly_json(tmp_path: Path) -> None:
@@ -133,6 +171,35 @@ def test_reordered_records_keep_ids_and_refresh_stored_row_references(
     assert first.inserted_count == 1 and first.existing_count == 0
     assert second.inserted_count == 0 and second.existing_count == 1
     assert stored_reference.row_number == 1
+
+
+def test_semantic_rec10_ids_are_idempotent_after_payment_reordering(
+    tmp_path: Path,
+) -> None:
+    original = _collision_result(tmp_path / "collision-original")
+    reordered = _collision_result(tmp_path / "collision-reordered", reverse=True)
+    database = tmp_path / "semantic-collision.db"
+
+    first = persist_reconciliation_result(database, original)
+    second = persist_reconciliation_result(database, reordered)
+    stored = read_stored_anomalies(database)
+    stored_rec10 = {
+        item.anomaly.order_id: item.anomaly
+        for item in stored
+        if item.anomaly.rule_code.value == "REC-10"
+    }
+
+    assert {item.anomaly_id for item in original.anomalies} == {
+        item.anomaly_id for item in reordered.anomalies
+    }
+    assert first.inserted_count == 3 and first.existing_count == 0
+    assert second.inserted_count == 0 and second.existing_count == 3
+    assert len(stored) == 3
+    assert set(stored_rec10) == {"shopify:MISSING-A", "shopify:MISSING-B"}
+    assert {
+        order_id: anomaly.record_references[0].row_number
+        for order_id, anomaly in stored_rec10.items()
+    } == {"shopify:MISSING-A": 2, "shopify:MISSING-B": 1}
 
 
 def test_review_status_and_first_detection_survive_later_upsert(tmp_path: Path) -> None:

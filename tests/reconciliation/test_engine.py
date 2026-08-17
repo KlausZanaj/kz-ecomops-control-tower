@@ -16,7 +16,9 @@ from kz_ecomops.reconciliation import (
     ReconciliationErrorCode,
     reconcile_dataset,
 )
+from kz_ecomops.reconciliation.engine import _merge_duplicate_anomalies
 from kz_ecomops.validation import (
+    CSV_SCHEMAS,
     DatasetValidationResult,
     validate_dataset_directory,
 )
@@ -34,6 +36,42 @@ def _manifest() -> dict[str, object]:
 def _reference_for(scenario: dict[str, object]) -> datetime:
     value = scenario["reference_at"]
     return datetime.fromisoformat(value) if value else REFERENCE_AT  # type: ignore[arg-type]
+
+
+def _collision_validation(
+    directory: Path,
+    *,
+    reverse: bool = False,
+) -> DatasetValidationResult:
+    directory.mkdir()
+    payments = [
+        {
+            "payment_id": "DUP-PAY",
+            "platform": "shopify",
+            "order_id": f"shopify:MISSING-{suffix}",
+            "source_order_id": f"MISSING-{suffix}",
+            "provider_transaction_id": "TXN-X",
+            "payment_method": "synthetic_card",
+            "payment_status": "succeeded",
+            "amount": "10.00",
+            "currency": "EUR",
+            "paid_at": "2026-03-01T10:00:00+00:00",
+            "created_at": "2026-03-01T09:59:00+00:00",
+            "updated_at": "2026-03-01T10:00:00+00:00",
+        }
+        for suffix in ("A", "B")
+    ]
+    if reverse:
+        payments.reverse()
+    rows = {filename: [] for filename in CSV_SCHEMAS}
+    rows["payments.csv"] = payments
+    for filename, schema in CSV_SCHEMAS.items():
+        pd.DataFrame(
+            rows[filename],
+            columns=schema.column_names,
+            dtype=str,
+        ).to_csv(directory / filename, index=False)
+    return validate_dataset_directory(directory)
 
 
 def test_valid_normalized_dataset_produces_zero_anomalies() -> None:
@@ -113,6 +151,62 @@ def test_repeated_rec10_findings_are_grouped_without_duplicate_ids() -> None:
     assert len(result.anomalies) == 1
     assert len({anomaly.anomaly_id for anomaly in result.anomalies}) == 1
     assert result.anomalies[0].rule_code.value == "REC-10"
+
+
+def test_rec10_business_identity_survives_duplicate_payment_reordering(
+    tmp_path: Path,
+) -> None:
+    original_validation = _collision_validation(tmp_path / "original")
+    reordered_validation = _collision_validation(
+        tmp_path / "reordered",
+        reverse=True,
+    )
+
+    assert original_validation.report.reconciliation_ready
+    assert original_validation.report.relationship_finding_count == 2
+    assert [
+        message.code for message in original_validation.report.messages
+    ] == ["order_reference_not_found", "order_reference_not_found"]
+    original = reconcile_dataset(original_validation, REFERENCE_AT)
+    reordered = reconcile_dataset(reordered_validation, REFERENCE_AT)
+
+    assert [item.rule_code.value for item in original.anomalies].count("REC-04") == 1
+    original_rec10 = {
+        item.order_id: item for item in original.anomalies if item.rule_code.value == "REC-10"
+    }
+    reordered_rec10 = {
+        item.order_id: item for item in reordered.anomalies if item.rule_code.value == "REC-10"
+    }
+    assert set(original_rec10) == {"shopify:MISSING-A", "shopify:MISSING-B"}
+    assert set(reordered_rec10) == set(original_rec10)
+    assert len(original.anomalies) == len({item.anomaly_id for item in original.anomalies}) == 3
+    assert {item.anomaly_id for item in original.anomalies} == {
+        item.anomaly_id for item in reordered.anomalies
+    }
+    assert {
+        order_id: anomaly.record_references[0].row_number
+        for order_id, anomaly in original_rec10.items()
+    } == {"shopify:MISSING-A": 1, "shopify:MISSING-B": 2}
+    assert {
+        order_id: anomaly.record_references[0].row_number
+        for order_id, anomaly in reordered_rec10.items()
+    } == {"shopify:MISSING-A": 2, "shopify:MISSING-B": 1}
+
+
+def test_merge_rejects_incompatible_business_payloads_with_same_id(
+    tmp_path: Path,
+) -> None:
+    result = reconcile_dataset(
+        _collision_validation(tmp_path / "collision"),
+        REFERENCE_AT,
+    )
+    first, second = (
+        item for item in result.anomalies if item.rule_code.value == "REC-10"
+    )
+    forced_collision = replace(second, anomaly_id=first.anomaly_id)
+
+    with pytest.raises(ValueError, match="incompatible business payloads"):
+        _merge_duplicate_anomalies((first, forced_collision))
 
 
 def test_rejects_naive_reference_non_result_blocking_and_incomplete_data() -> None:

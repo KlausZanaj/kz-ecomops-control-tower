@@ -59,6 +59,48 @@ def _merge_duplicate_anomalies(
         if existing is None:
             grouped[anomaly.anomaly_id] = anomaly
             continue
+        positional_keys = frozenset({"source_row_number"})
+        existing_business_values = {
+            key: value
+            for key, value in existing.compared_values.items()
+            if key not in positional_keys
+        }
+        anomaly_business_values = {
+            key: value
+            for key, value in anomaly.compared_values.items()
+            if key not in positional_keys
+        }
+        existing_payload = (
+            existing.rule_code,
+            existing.anomaly_code,
+            existing.order_id,
+            existing.platform,
+            existing.problem_type,
+            existing.description,
+            existing.severity,
+            existing.detected_at,
+            existing.recommended_action,
+            existing.review_status,
+            existing_business_values,
+        )
+        anomaly_payload = (
+            anomaly.rule_code,
+            anomaly.anomaly_code,
+            anomaly.order_id,
+            anomaly.platform,
+            anomaly.problem_type,
+            anomaly.description,
+            anomaly.severity,
+            anomaly.detected_at,
+            anomaly.recommended_action,
+            anomaly.review_status,
+            anomaly_business_values,
+        )
+        if existing_payload != anomaly_payload:
+            raise ValueError(
+                "Cannot merge anomalies with the same ID and incompatible "
+                "business payloads."
+            )
         references = {
             (
                 reference.filename,
@@ -67,8 +109,23 @@ def _merge_duplicate_anomalies(
             ): reference
             for reference in (*existing.record_references, *anomaly.record_references)
         }
+        compared_values = dict(existing.compared_values)
+        for key in positional_keys:
+            values = sorted(
+                {
+                    int(row_number)
+                    for item in (existing, anomaly)
+                    if (value := item.compared_values.get(key)) is not None
+                    for row_number in value.split(",")
+                }
+            )
+            if values:
+                compared_values[key] = ",".join(
+                    str(value) for value in values
+                )
         grouped[anomaly.anomaly_id] = replace(
             existing,
+            compared_values=compared_values,
             record_references=tuple(references.values()),
         )
     return tuple(grouped.values())

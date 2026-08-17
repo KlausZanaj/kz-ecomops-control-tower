@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from collections import defaultdict
 from datetime import datetime
 from decimal import Decimal
@@ -29,6 +30,19 @@ from .rules_common import (
 
 _SHIPPED_STATUSES = frozenset({"shipped", "delivered"})
 _RECEIVED_RETURN_STATUSES = frozenset({"received", "completed"})
+_RELATIONSHIP_IDENTITY_COLUMNS = frozenset(
+    {
+        "order_id",
+        "payment_id",
+        "platform",
+        "provider_refund_id",
+        "provider_transaction_id",
+        "refund_id",
+        "return_id",
+        "shipment_id",
+        "source_order_id",
+    }
+)
 
 
 def evaluate_rec_06(
@@ -404,6 +418,30 @@ def _relationship_severity(message: ValidationMessage) -> Severity:
     return Severity.CRITICAL if financial_file or financial_reference else Severity.HIGH
 
 
+def _relationship_discriminator(
+    message: ValidationMessage,
+    affected: IndexedRecord,
+) -> str:
+    """Identify one relationship problem from stable business values."""
+
+    columns = sorted(_RELATIONSHIP_IDENTITY_COLUMNS.union(message.columns))
+    business_values = {
+        column: affected.get(column)
+        for column in columns
+        if column in affected.values
+    }
+    return json.dumps(
+        {
+            "business_values": business_values,
+            "finding_code": message.code,
+            "source_file": message.filename,
+        },
+        ensure_ascii=False,
+        sort_keys=True,
+        separators=(",", ":"),
+    )
+
+
 def _state_missing_anomaly(
     *,
     context: ReconciliationContext,
@@ -469,7 +507,7 @@ def evaluate_rec_10(
                     "source_row_number": str(message.row_numbers[0]),
                 },
                 records=records,
-                discriminator=message.code,
+                discriminator=_relationship_discriminator(message, affected),
             )
         )
 
