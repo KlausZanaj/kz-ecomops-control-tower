@@ -16,6 +16,12 @@ from .schemas import (
     DataType,
 )
 from .reader import CsvReadErrorCode, CsvReadIssue, CsvReadResult, read_csv_file
+from .values import (
+    CsvValueErrorCode,
+    CsvValueIssue,
+    CsvValueValidationResult,
+    validate_csv_values,
+)
 
 __all__ = [
     "CSV_SCHEMAS",
@@ -35,4 +41,8 @@ __all__ = [
     "CsvReadIssue",
     "CsvReadResult",
     "read_csv_file",
+    "CsvValueErrorCode",
+    "CsvValueIssue",
+    "CsvValueValidationResult",
+    "validate_csv_values",
 ]

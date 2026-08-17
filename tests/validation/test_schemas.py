@@ -185,6 +185,17 @@ COLUMN_TYPES = {
     },
 }
 
+MONETARY_COLUMNS = {
+    ("orders.csv", "subtotal"),
+    ("orders.csv", "discount_total"),
+    ("orders.csv", "shipping_total"),
+    ("orders.csv", "tax_total"),
+    ("orders.csv", "order_total"),
+    ("payments.csv", "amount"),
+    ("returns.csv", "expected_refund_amount"),
+    ("refunds.csv", "amount"),
+}
+
 
 def test_registry_contains_exactly_required_csv_files() -> None:
     assert set(CSV_SCHEMAS) == REQUIRED_FILENAMES
@@ -328,6 +339,28 @@ def test_documented_monetary_minimums(
 def test_undocumented_return_amount_minimum_is_not_invented() -> None:
     column = CSV_SCHEMAS["returns.csv"].get_column("expected_refund_amount")
     assert column.minimum is None
+
+
+def test_all_mvp_decimal_columns_have_exactly_two_decimal_places() -> None:
+    decimal_columns = {
+        (filename, column.name)
+        for filename, schema in CSV_SCHEMAS.items()
+        for column in schema.columns
+        if column.data_type is DataType.DECIMAL
+    }
+    configured_columns = {
+        (filename, column.name)
+        for filename, schema in CSV_SCHEMAS.items()
+        for column in schema.columns
+        if column.decimal_places is not None
+    }
+
+    assert decimal_columns == MONETARY_COLUMNS
+    assert configured_columns == MONETARY_COLUMNS
+    assert all(
+        CSV_SCHEMAS[filename].get_column(column_name).decimal_places == 2
+        for filename, column_name in MONETARY_COLUMNS
+    )
 
 
 def test_column_schema_is_frozen_and_slotted() -> None:

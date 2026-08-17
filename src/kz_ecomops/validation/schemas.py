@@ -27,6 +27,7 @@ class ColumnSchema:
     allowed_values: frozenset[str] | None = None
     minimum: Decimal | None = None
     minimum_inclusive: bool = True
+    decimal_places: int | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -98,11 +99,21 @@ _ORDERS_SCHEMA = CsvSchema(
             "fulfillment_status", DataType.STRING, True, FULFILLMENT_STATUSES
         ),
         ColumnSchema("currency", DataType.STRING, True, SUPPORTED_CURRENCIES),
-        ColumnSchema("subtotal", DataType.DECIMAL, True, minimum=_ZERO),
-        ColumnSchema("discount_total", DataType.DECIMAL, True, minimum=_ZERO),
-        ColumnSchema("shipping_total", DataType.DECIMAL, True, minimum=_ZERO),
-        ColumnSchema("tax_total", DataType.DECIMAL, True, minimum=_ZERO),
-        ColumnSchema("order_total", DataType.DECIMAL, True, minimum=_ZERO),
+        ColumnSchema(
+            "subtotal", DataType.DECIMAL, True, minimum=_ZERO, decimal_places=2
+        ),
+        ColumnSchema(
+            "discount_total", DataType.DECIMAL, True, minimum=_ZERO, decimal_places=2
+        ),
+        ColumnSchema(
+            "shipping_total", DataType.DECIMAL, True, minimum=_ZERO, decimal_places=2
+        ),
+        ColumnSchema(
+            "tax_total", DataType.DECIMAL, True, minimum=_ZERO, decimal_places=2
+        ),
+        ColumnSchema(
+            "order_total", DataType.DECIMAL, True, minimum=_ZERO, decimal_places=2
+        ),
         ColumnSchema("customer_country", DataType.STRING, False),
         ColumnSchema("cancelled_at", DataType.DATETIME, False),
         ColumnSchema("cancellation_reason", DataType.STRING, False),
@@ -128,6 +139,7 @@ _PAYMENTS_SCHEMA = CsvSchema(
             True,
             minimum=_ZERO,
             minimum_inclusive=False,
+            decimal_places=2,
         ),
         ColumnSchema("currency", DataType.STRING, True, SUPPORTED_CURRENCIES),
         ColumnSchema("paid_at", DataType.DATETIME, False),
@@ -165,7 +177,9 @@ _RETURNS_SCHEMA = CsvSchema(
         ColumnSchema("return_reason", DataType.STRING, False),
         ColumnSchema("requested_at", DataType.DATETIME, True),
         ColumnSchema("received_at", DataType.DATETIME, False),
-        ColumnSchema("expected_refund_amount", DataType.DECIMAL, False),
+        ColumnSchema(
+            "expected_refund_amount", DataType.DECIMAL, False, decimal_places=2
+        ),
         ColumnSchema("currency", DataType.STRING, False, SUPPORTED_CURRENCIES),
         ColumnSchema("updated_at", DataType.DATETIME, True),
     ),
@@ -188,6 +202,7 @@ _REFUNDS_SCHEMA = CsvSchema(
             True,
             minimum=_ZERO,
             minimum_inclusive=False,
+            decimal_places=2,
         ),
         ColumnSchema("currency", DataType.STRING, True, SUPPORTED_CURRENCIES),
         ColumnSchema("reason", DataType.STRING, False),
