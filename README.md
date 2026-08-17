@@ -4,9 +4,9 @@ Multi-channel order reconciliation and e-commerce operations analytics.
 
 ## Project status
 
-**Phases 3 and 4 complete: synthetic data, normalization, and SQLite persistence implemented**
+**Phase 5 complete: deterministic REC-01–REC-10 reconciliation implemented**
 
-The project now provides deterministic synthetic datasets, documented simulated exports for four platforms, canonical normalization, complete five-file validation, and idempotent local SQLite persistence. The `REC-01`–`REC-10` reconciliation engine and Streamlit user interface are not implemented yet.
+The project now provides deterministic synthetic datasets, documented simulated exports for four platforms, canonical normalization, complete five-file validation, all ten reconciliation rules, explainable anomaly results, and idempotent local SQLite persistence. The Streamlit interface and final filtered CSV export are not implemented yet.
 
 ## The problem
 
@@ -32,7 +32,12 @@ The current data pipeline includes:
 - blocking uniqueness checks for order, shipment, and return identifiers;
 - non-blocking cross-file relationship findings for missing or inconsistent references;
 - end-to-end directory validation with per-file and dataset-level counts and reports;
-- transactional SQLite persistence with deterministic technical keys, source-row traceability, and idempotent re-imports.
+- transactional SQLite persistence with deterministic technical keys, source-row traceability, and idempotent re-imports;
+- explicit reconciliation configuration with `Decimal("0.01")`, 48-hour shipping, and seven-day return-refund defaults;
+- deterministic execution of `REC-01`–`REC-10` using an explicit timezone-aware reference time;
+- immutable, explainable anomalies with protected compared values and source-record references;
+- explicit `RuleNotEvaluated` results when a reliable conclusion cannot be reached;
+- idempotent SQLite anomaly persistence with first/last detection timestamps and a review status that can be updated without changing source data.
 
 Structural, value, integrity, and blocking uniqueness errors prevent the dataset from being marked ready for reconciliation. Relationship findings do not reject rows or block readiness: they remain attached to the report for the future `REC-10` reconciliation rule.
 
@@ -78,22 +83,24 @@ The files under `data/sample/sources/` are portfolio simulations created for thi
 
 The public normalization API can process one simulated platform directory with `normalize_platform_exports()` or combine all four with `normalize_all_platforms()`. `write_canonical_csvs()` writes the five canonical DataFrames to a new directory without overwriting existing canonical files.
 
-After `validate_dataset_directory()` returns a complete reconciliation-ready result, `persist_validated_dataset()` stores it transactionally in SQLite. Re-importing the same result reports records as already present instead of multiplying them. Exact payment and refund duplicates inside the first import remain distinct for the future `REC-04` and `REC-09` rules.
+After `validate_dataset_directory()` returns a complete reconciliation-ready result, `persist_validated_dataset()` stores it transactionally in SQLite. `reconcile_dataset()` then runs all ten rules with an explicit reference time and optional `ReconciliationConfig`. `persist_reconciliation_result()` saves anomalies without resetting a manually updated review status. Re-importing identical canonical data or reconciliation results does not multiply records.
 
-## Planned reconciliation checks
+## Implemented reconciliation rules
 
-The MVP is planned to detect:
+| Rule | Anomaly code | Condition | Severity | Recommended action |
+|---|---|---|---|---|
+| REC-01 | `PAYMENT_AMOUNT_MISMATCH` | Confirmed net payments differ from the order total beyond tolerance. | high | Compare order and provider transactions. |
+| REC-02 | `PAID_NOT_SHIPPED_ON_TIME` | A fully paid, non-cancelled order has not shipped after the configured limit. | medium/high | Check inventory, warehouse blocks, and fulfillment. |
+| REC-03 | `SHIPPED_WITHOUT_CONFIRMED_PAYMENT` | A shipment departed without sufficient confirmed net payment. | critical | Verify payment immediately and recover any shortfall. |
+| REC-04 | `DUPLICATE_PAYMENT` | Payment or provider transaction identifiers are duplicated. | high | Confirm transactions before refunding a duplicate charge. |
+| REC-05 | `SHIPMENT_WITHOUT_TRACKING` | A shipped or delivered shipment has blank tracking. | medium | Retrieve tracking from the carrier and update the channel. |
+| REC-06 | `CANCELLED_ORDER_SHIPPED` | A cancelled order has a shipped or delivered shipment. | critical | Attempt to stop delivery and review payment/refund status. |
+| REC-07 | `RETURN_RECEIVED_NOT_REFUNDED` | An overdue received return has no sufficient confirmed refund. | high | Complete or document the expected refund. |
+| REC-08 | `REFUND_EXCEEDS_PAYMENT` | Confirmed refunds exceed confirmed net payments beyond tolerance. | critical | Stop further refunds and verify all transactions. |
+| REC-09 | `DUPLICATE_REFUND` | Refund or provider refund identifiers are duplicated. | critical | Verify provider movements and prevent further credits. |
+| REC-10 | `CROSS_SYSTEM_RECORD_MISSING` | Cross-file references or declared event records are missing or inconsistent. | high/critical | Check exports, identifier mapping, and synchronization. |
 
-1. payment amount different from the order total;
-2. paid order not shipped within the configured time limit;
-3. order shipped without confirmed payment;
-4. duplicate payment;
-5. shipment without a tracking number;
-6. cancelled order that was still shipped;
-7. received return not refunded within the configured time limit;
-8. refund greater than the confirmed payment amount;
-9. duplicate refund;
-10. order-related record present in one system but missing from another.
+Money is always compared with `Decimal` and only within the same currency. A difference exactly equal to the configured tolerance does not create an anomaly. Time-based rules use only the explicit reference time supplied by the caller; the engine never reads the current clock implicitly.
 
 ## Technology stack
 
@@ -167,9 +174,9 @@ All data included in this public project will be entirely synthetic. Real custom
 3. CSV schemas and complete validation pipeline — completed.
 4. Synthetic demonstration datasets — completed.
 5. Data normalization and local SQLite storage — completed.
-6. Order reconciliation engine — next phase.
-7. Streamlit user interface.
-8. CSV exports and operational reporting.
+6. Order reconciliation engine — completed.
+7. Streamlit user interface — next phase.
+8. CSV exports and operational reporting — planned.
 9. Testing, performance checks, and final documentation.
 
 KPI analytics, inventory optimization, real platform APIs, authentication, and cloud deployment are planned only for future versions.
@@ -180,4 +187,4 @@ This project is intended to be released under the [MIT License](LICENSE).
 
 ## Introduzione in italiano
 
-KZ EcomOps Control Tower è un progetto dimostrativo per il controllo operativo di un e-commerce multicanale. Sono ora disponibili dati interamente sintetici e deterministici, export simulati per quattro piattaforme, normalizzazione nei cinque CSV comuni e salvataggio locale idempotente in SQLite. Le regole `REC-01`–`REC-10` e l'interfaccia Streamlit non sono ancora implementate; il prossimo passo è il motore di riconciliazione.
+KZ EcomOps Control Tower è un progetto dimostrativo per il controllo operativo di un e-commerce multicanale. Sono ora disponibili dati interamente sintetici, validazione, normalizzazione, tutte le regole `REC-01`–`REC-10` e persistenza SQLite idempotente anche per le anomalie. Il prossimo passo è l'interfaccia Streamlit; l'esportazione CSV finale non è ancora implementata.
