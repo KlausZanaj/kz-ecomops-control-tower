@@ -35,6 +35,12 @@ from .uniqueness import (
     CsvUniquenessValidationResult,
     validate_csv_uniqueness,
 )
+from .relationships import (
+    CsvRelationshipFinding,
+    CsvRelationshipFindingCode,
+    CsvRelationshipValidationResult,
+    validate_csv_relationships,
+)
 
 __all__ = [
     "CSV_SCHEMAS",
@@ -67,4 +73,8 @@ __all__ = [
     "CsvUniquenessIssue",
     "CsvUniquenessValidationResult",
     "validate_csv_uniqueness",
+    "CsvRelationshipFinding",
+    "CsvRelationshipFindingCode",
+    "CsvRelationshipValidationResult",
+    "validate_csv_relationships",
 ]
