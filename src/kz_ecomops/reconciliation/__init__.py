@@ -20,6 +20,13 @@ from .rules_01_05 import (
     evaluate_rec_04,
     evaluate_rec_05,
 )
+from .rules_06_10 import (
+    evaluate_rec_06,
+    evaluate_rec_07,
+    evaluate_rec_08,
+    evaluate_rec_09,
+    evaluate_rec_10,
+)
 
 __all__ = [
     "AnomalyCode",
@@ -38,4 +45,9 @@ __all__ = [
     "evaluate_rec_03",
     "evaluate_rec_04",
     "evaluate_rec_05",
+    "evaluate_rec_06",
+    "evaluate_rec_07",
+    "evaluate_rec_08",
+    "evaluate_rec_09",
+    "evaluate_rec_10",
 ]
