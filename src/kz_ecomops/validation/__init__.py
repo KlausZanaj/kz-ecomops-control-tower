@@ -22,6 +22,13 @@ from .values import (
     CsvValueValidationResult,
     validate_csv_values,
 )
+from .integrity import (
+    DEFAULT_MONETARY_TOLERANCE,
+    CsvIntegrityErrorCode,
+    CsvIntegrityIssue,
+    CsvIntegrityValidationResult,
+    validate_csv_integrity,
+)
 
 __all__ = [
     "CSV_SCHEMAS",
@@ -45,4 +52,9 @@ __all__ = [
     "CsvValueIssue",
     "CsvValueValidationResult",
     "validate_csv_values",
+    "DEFAULT_MONETARY_TOLERANCE",
+    "CsvIntegrityErrorCode",
+    "CsvIntegrityIssue",
+    "CsvIntegrityValidationResult",
+    "validate_csv_integrity",
 ]
