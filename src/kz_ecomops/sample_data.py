@@ -21,6 +21,7 @@ PLATFORMS = ("shopify", "woocommerce", "amazon", "ebay")
 SOURCE_PREFIXES = MappingProxyType(
     {"shopify": "sh", "woocommerce": "wc", "amazon": "amz", "ebay": "eb"}
 )
+_MANAGED_TEXT_SUFFIXES = frozenset({".csv", ".json", ".md"})
 
 _SOURCE_ALIASES = MappingProxyType(
     {
@@ -611,8 +612,22 @@ def build_sample_files() -> Mapping[str, bytes]:
     return MappingProxyType(dict(sorted(files.items())))
 
 
+def _managed_contents_match(
+    relative_path: str,
+    actual_content: bytes,
+    expected_content: bytes,
+) -> bool:
+    """Compare managed content, allowing only LF/CRLF text representation changes."""
+
+    if Path(relative_path).suffix.casefold() in _MANAGED_TEXT_SUFFIXES:
+        return actual_content.replace(b"\r\n", b"\n") == expected_content.replace(
+            b"\r\n", b"\n"
+        )
+    return actual_content == expected_content
+
+
 def check_sample_data(destination: str | Path) -> SampleDataCheckResult:
-    """Compare a directory with the deterministic sample build without writing."""
+    """Compare managed files without writing, accepting platform text newlines."""
 
     root = Path(destination)
     expected = build_sample_files()
@@ -625,7 +640,8 @@ def check_sample_data(destination: str | Path) -> SampleDataCheckResult:
     mismatched = tuple(
         path
         for path, source in existing.items()
-        if path in expected and source.read_bytes() != expected[path]
+        if path in expected
+        and not _managed_contents_match(path, source.read_bytes(), expected[path])
     )
     unexpected = tuple(sorted(set(existing) - set(expected)))
     return SampleDataCheckResult(

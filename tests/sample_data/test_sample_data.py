@@ -41,11 +41,66 @@ def test_generation_is_byte_for_byte_repeatable(tmp_path: Path) -> None:
     assert generate_sample_data(second).is_current
 
     expected = build_sample_files()
-    assert {
+    first_files = {
         path: (first / path).read_bytes() for path in expected
-    } == {
+    }
+    second_files = {
         path: (second / path).read_bytes() for path in expected
     }
+    assert first_files == second_files == dict(expected)
+    assert all(
+        b"\r\n" not in content
+        for path, content in first_files.items()
+        if path.endswith((".csv", ".json", ".md"))
+    )
+
+
+def test_check_accepts_crlf_without_rewriting_managed_text(tmp_path: Path) -> None:
+    assert generate_sample_data(tmp_path).is_current
+    target = tmp_path / "normalized" / "valid" / "orders.csv"
+    crlf_content = target.read_bytes().replace(b"\n", b"\r\n")
+    target.write_bytes(crlf_content)
+
+    assert check_sample_data(tmp_path).is_current
+    assert generate_sample_data(tmp_path).is_current
+    assert target.read_bytes() == crlf_content
+
+
+def test_check_rejects_semantic_change_with_crlf(tmp_path: Path) -> None:
+    assert generate_sample_data(tmp_path).is_current
+    target = tmp_path / "normalized" / "valid" / "orders.csv"
+    crlf_content = target.read_bytes().replace(b"\n", b"\r\n")
+    target.write_bytes(crlf_content.replace(b"SYN-SH-1001", b"SYN-SH-9999", 1))
+
+    result = check_sample_data(tmp_path)
+
+    assert not result.is_current
+    assert result.mismatched_files == ("normalized/valid/orders.csv",)
+
+
+def test_check_rejects_utf8_bom(tmp_path: Path) -> None:
+    assert generate_sample_data(tmp_path).is_current
+    target = tmp_path / "manifest.json"
+    target.write_bytes(b"\xef\xbb\xbf" + target.read_bytes())
+
+    result = check_sample_data(tmp_path)
+
+    assert not result.is_current
+    assert result.mismatched_files == ("manifest.json",)
+
+
+def test_check_preserves_missing_and_unexpected_file_detection(tmp_path: Path) -> None:
+    assert generate_sample_data(tmp_path).is_current
+    missing = tmp_path / "normalized" / "valid" / "orders.csv"
+    missing.unlink()
+    (tmp_path / "unexpected.txt").write_text("unmanaged\n", encoding="utf-8")
+
+    result = check_sample_data(tmp_path)
+
+    assert not result.is_current
+    assert result.missing_files == ("normalized/valid/orders.csv",)
+    assert not result.mismatched_files
+    assert result.unexpected_files == ("unexpected.txt",)
 
 
 def test_check_mode_does_not_overwrite_modified_file(tmp_path: Path) -> None:
