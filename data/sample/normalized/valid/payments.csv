@@ -1,0 +1,5 @@
+payment_id,platform,order_id,source_order_id,provider_transaction_id,payment_method,payment_status,amount,currency,paid_at,created_at,updated_at
+pay-SYN-SH-1001,shopify,shopify:SYN-SH-1001,SYN-SH-1001,txn-SYN-SH-1001,synthetic_card,succeeded,100.00,EUR,2026-01-01T10:05:00+00:00,2026-01-01T10:04:00+00:00,2026-01-01T10:05:00+00:00
+pay-SYN-WC-1002,woocommerce,woocommerce:SYN-WC-1002,SYN-WC-1002,txn-SYN-WC-1002,synthetic_card,succeeded,110.00,EUR,2026-01-11T10:05:00+00:00,2026-01-11T10:04:00+00:00,2026-01-11T10:05:00+00:00
+pay-SYN-AMZ-1003,amazon,amazon:SYN-AMZ-1003,SYN-AMZ-1003,txn-SYN-AMZ-1003,synthetic_card,succeeded,120.00,EUR,2026-01-21T10:05:00+00:00,2026-01-21T10:04:00+00:00,2026-01-21T10:05:00+00:00
+pay-SYN-EB-1004,ebay,ebay:SYN-EB-1004,SYN-EB-1004,txn-SYN-EB-1004,synthetic_card,succeeded,130.00,EUR,2026-01-31T10:05:00+00:00,2026-01-31T10:04:00+00:00,2026-01-31T10:05:00+00:00

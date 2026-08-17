@@ -1,0 +1,2 @@
+amz_return_ref,amz_order_ref,amz_return_state,amz_return_reason,amz_requested_time,amz_received_time,amz_expected_refund_value,amz_currency_code,amz_updated_time
+ret-SYN-AMZ-1003,SYN-AMZ-1003,Closed,synthetic_return,2026-01-25 10:00:00+00:00,2026-01-27 10:00:00+00:00,120.00,EUR,2026-01-27 10:00:00+00:00

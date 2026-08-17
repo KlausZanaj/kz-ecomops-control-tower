@@ -1,0 +1,2 @@
+wc_refund_ref,wc_order_ref,wc_return_ref,wc_payment_ref,wc_provider_refund_ref,wc_refund_state,wc_amount_value,wc_currency_code,wc_refund_reason,wc_refunded_time,wc_created_time,wc_updated_time
+ref-SYN-WC-1002,SYN-WC-1002,ret-SYN-WC-1002,pay-SYN-WC-1002,provider-ref-SYN-WC-1002,completed,"110,00",EUR,synthetic_refund,2026-01-18T10:00:00Z,2026-01-18T09:59:00Z,2026-01-18T10:00:00Z

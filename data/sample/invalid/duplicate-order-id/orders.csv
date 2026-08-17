@@ -1,0 +1,3 @@
+order_id,platform,source_order_id,order_number,ordered_at,order_status,payment_status,fulfillment_status,currency,subtotal,discount_total,shipping_total,tax_total,order_total,customer_country,cancelled_at,cancellation_reason,updated_at
+shopify:INVALID-DUPLICATE-0001,shopify,INVALID-DUPLICATE-0001,DEMO-INVALID-DUPLICATE-0001,2026-03-01T10:00:00+00:00,fulfilled,paid,fulfilled,EUR,90.00,0.00,5.00,5.00,100.00,IT,,,2026-03-02T12:00:00+00:00
+shopify:INVALID-DUPLICATE-0001,shopify,INVALID-DUPLICATE-0001,DEMO-INVALID-DUPLICATE-0001,2026-03-01T10:00:00+00:00,fulfilled,paid,fulfilled,EUR,90.00,0.00,5.00,5.00,100.00,IT,,,2026-03-02T12:00:00+00:00

@@ -1,0 +1,1 @@
+refund_id,platform,order_id,source_order_id,return_id,payment_id,provider_refund_id,refund_status,amount,currency,reason,refunded_at,created_at,updated_at

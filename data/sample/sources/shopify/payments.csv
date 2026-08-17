@@ -1,0 +1,2 @@
+sh_payment_ref,sh_order_ref,sh_provider_transaction_ref,sh_payment_method,sh_financial_state,sh_amount_value,sh_currency_code,sh_paid_time,sh_created_time,sh_updated_time
+pay-SYN-SH-1001,SYN-SH-1001,txn-SYN-SH-1001,synthetic_card,success,100.00,EUR,2026-01-01T10:05:00+00:00,2026-01-01T10:04:00+00:00,2026-01-01T10:05:00+00:00

@@ -1,0 +1,2 @@
+eb_return_ref,eb_order_ref,eb_return_state,eb_return_reason,eb_requested_time,eb_received_time,eb_expected_refund_value,eb_currency_code,eb_updated_time
+ret-SYN-EB-1004,SYN-EB-1004,COMPLETED,synthetic_return,2026-02-04 10:00:00+0000,2026-02-06 10:00:00+0000,13000,EUR,2026-02-06 10:00:00+0000

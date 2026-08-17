@@ -1,0 +1,1 @@
+return_id,platform,order_id,source_order_id,return_status,return_reason,requested_at,received_at,expected_refund_amount,currency,updated_at

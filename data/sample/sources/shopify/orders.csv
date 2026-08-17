@@ -1,0 +1,2 @@
+sh_order_ref,sh_order_number,sh_ordered_time,sh_order_state,sh_financial_state,sh_fulfillment_state,sh_currency_code,sh_subtotal_amount,sh_discount_amount,sh_shipping_amount,sh_tax_amount,sh_total_amount,sh_country_code,sh_cancelled_time,sh_cancel_reason,sh_updated_time
+SYN-SH-1001,DEMO-SYN-SH-1001,2026-01-01T10:00:00+00:00,closed,refunded,returned,EUR,90.00,0.00,5.00,5.00,100.00,IT,,,2026-01-09T10:00:00+00:00

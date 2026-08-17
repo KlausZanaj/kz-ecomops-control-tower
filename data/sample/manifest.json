@@ -1,0 +1,217 @@
+{
+  "canonical_valid_dataset": {
+    "currency": "EUR",
+    "directory": "normalized/valid",
+    "expected_validation": {
+      "blocking_message_count": 0,
+      "reconciliation_ready": true,
+      "relationship_finding_count": 0
+    },
+    "platforms": [
+      "shopify",
+      "woocommerce",
+      "amazon",
+      "ebay"
+    ]
+  },
+  "format_version": 1,
+  "invalid_examples": [
+    {
+      "description": "orders.csv omits the required currency column.",
+      "directory": "invalid/missing-required-column",
+      "expected_code": "missing_required_columns",
+      "expected_stage": "read"
+    },
+    {
+      "description": "orders.csv contains an impossible ordered_at value.",
+      "directory": "invalid/invalid-datetime",
+      "expected_code": "invalid_datetime",
+      "expected_stage": "value"
+    },
+    {
+      "description": "A succeeded payment omits paid_at.",
+      "directory": "invalid/missing-paid-at",
+      "expected_code": "missing_paid_at",
+      "expected_stage": "integrity"
+    },
+    {
+      "description": "orders.csv repeats a blocking order identifier.",
+      "directory": "invalid/duplicate-order-id",
+      "expected_code": "duplicate_order_id",
+      "expected_stage": "uniqueness"
+    }
+  ],
+  "scenarios": [
+    {
+      "affected_order_ids": [
+        "shopify:REC-01-0001"
+      ],
+      "anomaly_code": "PAYMENT_AMOUNT_MISMATCH",
+      "code": "REC-01",
+      "description": "Synthetic isolated scenario for PAYMENT_AMOUNT_MISMATCH.",
+      "directory": "scenarios/rec-01-payment-amount-mismatch",
+      "expected_anomaly_count": 1,
+      "expected_validation": {
+        "blocking_message_count": 0,
+        "reconciliation_ready": true,
+        "relationship_finding_count": 0
+      },
+      "reference_at": "2026-03-01T11:00:00+00:00"
+    },
+    {
+      "affected_order_ids": [
+        "shopify:REC-02-0001"
+      ],
+      "anomaly_code": "PAID_NOT_SHIPPED_ON_TIME",
+      "code": "REC-02",
+      "description": "Synthetic isolated scenario for PAID_NOT_SHIPPED_ON_TIME.",
+      "directory": "scenarios/rec-02-paid-not-shipped-on-time",
+      "expected_anomaly_count": 1,
+      "expected_validation": {
+        "blocking_message_count": 0,
+        "reconciliation_ready": true,
+        "relationship_finding_count": 0
+      },
+      "reference_at": "2026-03-04T12:00:00+00:00"
+    },
+    {
+      "affected_order_ids": [
+        "shopify:REC-03-0001"
+      ],
+      "anomaly_code": "SHIPPED_WITHOUT_CONFIRMED_PAYMENT",
+      "code": "REC-03",
+      "description": "Synthetic isolated scenario for SHIPPED_WITHOUT_CONFIRMED_PAYMENT.",
+      "directory": "scenarios/rec-03-shipped-without-confirmed-payment",
+      "expected_anomaly_count": 1,
+      "expected_validation": {
+        "blocking_message_count": 0,
+        "reconciliation_ready": true,
+        "relationship_finding_count": 0
+      },
+      "reference_at": "2026-03-02T12:00:00+00:00"
+    },
+    {
+      "affected_order_ids": [
+        "shopify:REC-04-0001"
+      ],
+      "anomaly_code": "DUPLICATE_PAYMENT",
+      "code": "REC-04",
+      "description": "Synthetic isolated scenario for DUPLICATE_PAYMENT.",
+      "directory": "scenarios/rec-04-duplicate-payment",
+      "expected_anomaly_count": 1,
+      "expected_validation": {
+        "blocking_message_count": 0,
+        "reconciliation_ready": true,
+        "relationship_finding_count": 0
+      },
+      "reference_at": null
+    },
+    {
+      "affected_order_ids": [
+        "shopify:REC-05-0001"
+      ],
+      "anomaly_code": "SHIPMENT_WITHOUT_TRACKING",
+      "code": "REC-05",
+      "description": "Synthetic isolated scenario for SHIPMENT_WITHOUT_TRACKING.",
+      "directory": "scenarios/rec-05-shipment-without-tracking",
+      "expected_anomaly_count": 1,
+      "expected_validation": {
+        "blocking_message_count": 0,
+        "reconciliation_ready": true,
+        "relationship_finding_count": 0
+      },
+      "reference_at": null
+    },
+    {
+      "affected_order_ids": [
+        "shopify:REC-06-0001"
+      ],
+      "anomaly_code": "CANCELLED_ORDER_SHIPPED",
+      "code": "REC-06",
+      "description": "Synthetic isolated scenario for CANCELLED_ORDER_SHIPPED.",
+      "directory": "scenarios/rec-06-cancelled-order-shipped",
+      "expected_anomaly_count": 1,
+      "expected_validation": {
+        "blocking_message_count": 0,
+        "reconciliation_ready": true,
+        "relationship_finding_count": 0
+      },
+      "reference_at": null
+    },
+    {
+      "affected_order_ids": [
+        "shopify:REC-07-0001"
+      ],
+      "anomaly_code": "RETURN_RECEIVED_NOT_REFUNDED",
+      "code": "REC-07",
+      "description": "Synthetic isolated scenario for RETURN_RECEIVED_NOT_REFUNDED.",
+      "directory": "scenarios/rec-07-return-received-not-refunded",
+      "expected_anomaly_count": 1,
+      "expected_validation": {
+        "blocking_message_count": 0,
+        "reconciliation_ready": true,
+        "relationship_finding_count": 0
+      },
+      "reference_at": "2026-03-15T10:00:00+00:00"
+    },
+    {
+      "affected_order_ids": [
+        "shopify:REC-08-0001"
+      ],
+      "anomaly_code": "REFUND_EXCEEDS_PAYMENT",
+      "code": "REC-08",
+      "description": "Synthetic isolated scenario for REFUND_EXCEEDS_PAYMENT.",
+      "directory": "scenarios/rec-08-refund-exceeds-payment",
+      "expected_anomaly_count": 1,
+      "expected_validation": {
+        "blocking_message_count": 0,
+        "reconciliation_ready": true,
+        "relationship_finding_count": 0
+      },
+      "reference_at": null
+    },
+    {
+      "affected_order_ids": [
+        "shopify:REC-09-0001"
+      ],
+      "anomaly_code": "DUPLICATE_REFUND",
+      "code": "REC-09",
+      "description": "Synthetic isolated scenario for DUPLICATE_REFUND.",
+      "directory": "scenarios/rec-09-duplicate-refund",
+      "expected_anomaly_count": 1,
+      "expected_validation": {
+        "blocking_message_count": 0,
+        "reconciliation_ready": true,
+        "relationship_finding_count": 0
+      },
+      "reference_at": null
+    },
+    {
+      "affected_order_ids": [
+        "shopify:REC10-MISSING-9001"
+      ],
+      "anomaly_code": "CROSS_SYSTEM_RECORD_MISSING",
+      "code": "REC-10",
+      "description": "Synthetic isolated scenario for CROSS_SYSTEM_RECORD_MISSING.",
+      "directory": "scenarios/rec-10-cross-system-record-missing",
+      "expected_anomaly_count": 1,
+      "expected_validation": {
+        "blocking_message_count": 0,
+        "reconciliation_ready": true,
+        "relationship_finding_count": 1
+      },
+      "reference_at": null
+    }
+  ],
+  "source_exports": {
+    "directory": "sources",
+    "disclaimer": "Documented portfolio simulations, not official API contracts.",
+    "platforms": [
+      "shopify",
+      "woocommerce",
+      "amazon",
+      "ebay"
+    ]
+  },
+  "synthetic_only": true
+}

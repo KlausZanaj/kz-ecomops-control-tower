@@ -1,0 +1,2 @@
+eb_payment_ref,eb_order_ref,eb_provider_transaction_ref,eb_payment_method,eb_financial_state,eb_amount_value,eb_currency_code,eb_paid_time,eb_created_time,eb_updated_time
+pay-SYN-EB-1004,SYN-EB-1004,txn-SYN-EB-1004,synthetic_card,SUCCEEDED,13000,EUR,2026-01-31 10:05:00+0000,2026-01-31 10:04:00+0000,2026-01-31 10:05:00+0000

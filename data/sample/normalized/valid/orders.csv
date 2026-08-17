@@ -1,0 +1,5 @@
+order_id,platform,source_order_id,order_number,ordered_at,order_status,payment_status,fulfillment_status,currency,subtotal,discount_total,shipping_total,tax_total,order_total,customer_country,cancelled_at,cancellation_reason,updated_at
+shopify:SYN-SH-1001,shopify,SYN-SH-1001,DEMO-SYN-SH-1001,2026-01-01T10:00:00+00:00,completed,refunded,returned,EUR,90.00,0.00,5.00,5.00,100.00,IT,,,2026-01-09T10:00:00+00:00
+woocommerce:SYN-WC-1002,woocommerce,SYN-WC-1002,DEMO-SYN-WC-1002,2026-01-11T10:00:00+00:00,completed,refunded,returned,EUR,100.00,0.00,5.00,5.00,110.00,IT,,,2026-01-19T10:00:00+00:00
+amazon:SYN-AMZ-1003,amazon,SYN-AMZ-1003,DEMO-SYN-AMZ-1003,2026-01-21T10:00:00+00:00,completed,refunded,returned,EUR,110.00,0.00,5.00,5.00,120.00,IT,,,2026-01-29T10:00:00+00:00
+ebay:SYN-EB-1004,ebay,SYN-EB-1004,DEMO-SYN-EB-1004,2026-01-31T10:00:00+00:00,completed,refunded,returned,EUR,120.00,0.00,5.00,5.00,130.00,IT,,,2026-02-08T10:00:00+00:00

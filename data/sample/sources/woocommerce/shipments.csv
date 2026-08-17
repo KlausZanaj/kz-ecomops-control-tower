@@ -1,0 +1,2 @@
+wc_shipment_ref,wc_order_ref,wc_shipment_state,wc_carrier_name,wc_service_name,wc_tracking_ref,wc_shipped_time,wc_delivered_time,wc_warehouse_ref,wc_updated_time
+ship-SYN-WC-1002,SYN-WC-1002,completed,synthetic_carrier,standard,track-SYN-WC-1002,2026-01-12T10:00:00Z,2026-01-13T10:00:00Z,synthetic-warehouse-01,2026-01-13T10:00:00Z

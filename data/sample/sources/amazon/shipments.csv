@@ -1,0 +1,2 @@
+amz_shipment_ref,amz_order_ref,amz_shipment_state,amz_carrier_name,amz_service_name,amz_tracking_ref,amz_shipped_time,amz_delivered_time,amz_warehouse_ref,amz_updated_time
+ship-SYN-AMZ-1003,SYN-AMZ-1003,Delivered,synthetic_carrier,standard,track-SYN-AMZ-1003,2026-01-22 10:00:00+00:00,2026-01-23 10:00:00+00:00,synthetic-warehouse-01,2026-01-23 10:00:00+00:00

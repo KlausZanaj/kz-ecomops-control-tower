@@ -1,0 +1,5 @@
+shipment_id,platform,order_id,source_order_id,shipment_status,carrier,shipping_service,tracking_number,shipped_at,delivered_at,warehouse_id,updated_at
+ship-SYN-SH-1001,shopify,shopify:SYN-SH-1001,SYN-SH-1001,delivered,synthetic_carrier,standard,track-SYN-SH-1001,2026-01-02T10:00:00+00:00,2026-01-03T10:00:00+00:00,synthetic-warehouse-01,2026-01-03T10:00:00+00:00
+ship-SYN-WC-1002,woocommerce,woocommerce:SYN-WC-1002,SYN-WC-1002,delivered,synthetic_carrier,standard,track-SYN-WC-1002,2026-01-12T10:00:00+00:00,2026-01-13T10:00:00+00:00,synthetic-warehouse-01,2026-01-13T10:00:00+00:00
+ship-SYN-AMZ-1003,amazon,amazon:SYN-AMZ-1003,SYN-AMZ-1003,delivered,synthetic_carrier,standard,track-SYN-AMZ-1003,2026-01-22T10:00:00+00:00,2026-01-23T10:00:00+00:00,synthetic-warehouse-01,2026-01-23T10:00:00+00:00
+ship-SYN-EB-1004,ebay,ebay:SYN-EB-1004,SYN-EB-1004,delivered,synthetic_carrier,standard,track-SYN-EB-1004,2026-02-01T10:00:00+00:00,2026-02-02T10:00:00+00:00,synthetic-warehouse-01,2026-02-02T10:00:00+00:00

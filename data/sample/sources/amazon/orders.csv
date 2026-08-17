@@ -1,0 +1,2 @@
+amz_order_ref,amz_order_number,amz_ordered_time,amz_order_state,amz_financial_state,amz_fulfillment_state,amz_currency_code,amz_subtotal_amount,amz_discount_amount,amz_shipping_amount,amz_tax_amount,amz_total_amount,amz_country_code,amz_cancelled_time,amz_cancel_reason,amz_updated_time
+SYN-AMZ-1003,DEMO-SYN-AMZ-1003,2026-01-21 10:00:00+00:00,Closed,Refunded,Returned,EUR,110.00,0.00,5.00,5.00,120.00,IT,,,2026-01-29 10:00:00+00:00

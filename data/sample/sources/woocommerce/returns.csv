@@ -1,0 +1,2 @@
+wc_return_ref,wc_order_ref,wc_return_state,wc_return_reason,wc_requested_time,wc_received_time,wc_expected_refund_value,wc_currency_code,wc_updated_time
+ret-SYN-WC-1002,SYN-WC-1002,completed,synthetic_return,2026-01-15T10:00:00Z,2026-01-17T10:00:00Z,"110,00",EUR,2026-01-17T10:00:00Z

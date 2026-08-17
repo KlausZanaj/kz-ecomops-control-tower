@@ -1,0 +1,2 @@
+wc_order_ref,wc_order_number,wc_ordered_time,wc_order_state,wc_financial_state,wc_fulfillment_state,wc_currency_code,wc_subtotal_amount,wc_discount_amount,wc_shipping_amount,wc_tax_amount,wc_total_amount,wc_country_code,wc_cancelled_time,wc_cancel_reason,wc_updated_time
+SYN-WC-1002,DEMO-SYN-WC-1002,2026-01-11T10:00:00Z,wc-completed,wc-refunded,wc-returned,EUR,"100,00","0,00","5,00","5,00","110,00",IT,,,2026-01-19T10:00:00Z

@@ -1,0 +1,2 @@
+sh_shipment_ref,sh_order_ref,sh_shipment_state,sh_carrier_name,sh_service_name,sh_tracking_ref,sh_shipped_time,sh_delivered_time,sh_warehouse_ref,sh_updated_time
+ship-SYN-SH-1001,SYN-SH-1001,delivered,synthetic_carrier,standard,track-SYN-SH-1001,2026-01-02T10:00:00+00:00,2026-01-03T10:00:00+00:00,synthetic-warehouse-01,2026-01-03T10:00:00+00:00

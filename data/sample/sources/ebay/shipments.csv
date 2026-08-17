@@ -1,0 +1,2 @@
+eb_shipment_ref,eb_order_ref,eb_shipment_state,eb_carrier_name,eb_service_name,eb_tracking_ref,eb_shipped_time,eb_delivered_time,eb_warehouse_ref,eb_updated_time
+ship-SYN-EB-1004,SYN-EB-1004,DELIVERED,synthetic_carrier,standard,track-SYN-EB-1004,2026-02-01 10:00:00+0000,2026-02-02 10:00:00+0000,synthetic-warehouse-01,2026-02-02 10:00:00+0000

@@ -1,0 +1,2 @@
+eb_order_ref,eb_order_number,eb_ordered_time,eb_order_state,eb_financial_state,eb_fulfillment_state,eb_currency_code,eb_subtotal_amount,eb_discount_amount,eb_shipping_amount,eb_tax_amount,eb_total_amount,eb_country_code,eb_cancelled_time,eb_cancel_reason,eb_updated_time
+SYN-EB-1004,DEMO-SYN-EB-1004,2026-01-31 10:00:00+0000,COMPLETED,REFUNDED,RETURNED,EUR,12000,0,500,500,13000,IT,,,2026-02-08 10:00:00+0000

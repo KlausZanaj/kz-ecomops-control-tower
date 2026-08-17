@@ -1,0 +1,2 @@
+amz_payment_ref,amz_order_ref,amz_provider_transaction_ref,amz_payment_method,amz_financial_state,amz_amount_value,amz_currency_code,amz_paid_time,amz_created_time,amz_updated_time
+pay-SYN-AMZ-1003,SYN-AMZ-1003,txn-SYN-AMZ-1003,synthetic_card,Captured,120.00,EUR,2026-01-21 10:05:00+00:00,2026-01-21 10:04:00+00:00,2026-01-21 10:05:00+00:00

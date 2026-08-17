@@ -1,0 +1,2 @@
+sh_refund_ref,sh_order_ref,sh_return_ref,sh_payment_ref,sh_provider_refund_ref,sh_refund_state,sh_amount_value,sh_currency_code,sh_refund_reason,sh_refunded_time,sh_created_time,sh_updated_time
+ref-SYN-SH-1001,SYN-SH-1001,ret-SYN-SH-1001,pay-SYN-SH-1001,provider-ref-SYN-SH-1001,success,100.00,EUR,synthetic_refund,2026-01-08T10:00:00+00:00,2026-01-08T09:59:00+00:00,2026-01-08T10:00:00+00:00

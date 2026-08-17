@@ -1,0 +1,2 @@
+sh_return_ref,sh_order_ref,sh_return_state,sh_return_reason,sh_requested_time,sh_received_time,sh_expected_refund_value,sh_currency_code,sh_updated_time
+ret-SYN-SH-1001,SYN-SH-1001,closed,synthetic_return,2026-01-05T10:00:00+00:00,2026-01-07T10:00:00+00:00,100.00,EUR,2026-01-07T10:00:00+00:00

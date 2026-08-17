@@ -1,0 +1,2 @@
+eb_refund_ref,eb_order_ref,eb_return_ref,eb_payment_ref,eb_provider_refund_ref,eb_refund_state,eb_amount_value,eb_currency_code,eb_refund_reason,eb_refunded_time,eb_created_time,eb_updated_time
+ref-SYN-EB-1004,SYN-EB-1004,ret-SYN-EB-1004,pay-SYN-EB-1004,provider-ref-SYN-EB-1004,SUCCEEDED,13000,EUR,synthetic_refund,2026-02-07 10:00:00+0000,2026-02-07 09:59:00+0000,2026-02-07 10:00:00+0000

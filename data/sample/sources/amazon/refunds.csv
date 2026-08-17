@@ -1,0 +1,2 @@
+amz_refund_ref,amz_order_ref,amz_return_ref,amz_payment_ref,amz_provider_refund_ref,amz_refund_state,amz_amount_value,amz_currency_code,amz_refund_reason,amz_refunded_time,amz_created_time,amz_updated_time
+ref-SYN-AMZ-1003,SYN-AMZ-1003,ret-SYN-AMZ-1003,pay-SYN-AMZ-1003,provider-ref-SYN-AMZ-1003,Completed,120.00,EUR,synthetic_refund,2026-01-28 10:00:00+00:00,2026-01-28 09:59:00+00:00,2026-01-28 10:00:00+00:00

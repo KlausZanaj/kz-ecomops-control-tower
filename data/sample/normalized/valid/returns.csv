@@ -1,0 +1,5 @@
+return_id,platform,order_id,source_order_id,return_status,return_reason,requested_at,received_at,expected_refund_amount,currency,updated_at
+ret-SYN-SH-1001,shopify,shopify:SYN-SH-1001,SYN-SH-1001,completed,synthetic_return,2026-01-05T10:00:00+00:00,2026-01-07T10:00:00+00:00,100.00,EUR,2026-01-07T10:00:00+00:00
+ret-SYN-WC-1002,woocommerce,woocommerce:SYN-WC-1002,SYN-WC-1002,completed,synthetic_return,2026-01-15T10:00:00+00:00,2026-01-17T10:00:00+00:00,110.00,EUR,2026-01-17T10:00:00+00:00
+ret-SYN-AMZ-1003,amazon,amazon:SYN-AMZ-1003,SYN-AMZ-1003,completed,synthetic_return,2026-01-25T10:00:00+00:00,2026-01-27T10:00:00+00:00,120.00,EUR,2026-01-27T10:00:00+00:00
+ret-SYN-EB-1004,ebay,ebay:SYN-EB-1004,SYN-EB-1004,completed,synthetic_return,2026-02-04T10:00:00+00:00,2026-02-06T10:00:00+00:00,130.00,EUR,2026-02-06T10:00:00+00:00

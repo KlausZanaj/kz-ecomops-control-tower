@@ -1,0 +1,2 @@
+wc_payment_ref,wc_order_ref,wc_provider_transaction_ref,wc_payment_method,wc_financial_state,wc_amount_value,wc_currency_code,wc_paid_time,wc_created_time,wc_updated_time
+pay-SYN-WC-1002,SYN-WC-1002,txn-SYN-WC-1002,synthetic_card,completed,"110,00",EUR,2026-01-11T10:05:00Z,2026-01-11T10:04:00Z,2026-01-11T10:05:00Z

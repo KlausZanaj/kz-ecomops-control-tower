@@ -1,0 +1,2 @@
+shipment_id,platform,order_id,source_order_id,shipment_status,carrier,shipping_service,tracking_number,shipped_at,delivered_at,warehouse_id,updated_at
+ship-REC-09-0001,shopify,shopify:REC-09-0001,REC-09-0001,delivered,synthetic_carrier,standard,track-REC-09-0001,2026-03-02T09:00:00+00:00,2026-03-03T14:00:00+00:00,synthetic-warehouse-01,2026-03-03T14:00:00+00:00
