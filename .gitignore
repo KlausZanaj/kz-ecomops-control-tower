@@ -27,6 +27,7 @@ ENV/
 *.sqlite3
 *.db-journal
 *.sqlite-journal
+.runtime/
 
 # Packaging and build output
 build/
