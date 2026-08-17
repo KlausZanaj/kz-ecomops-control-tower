@@ -29,6 +29,12 @@ from .integrity import (
     CsvIntegrityValidationResult,
     validate_csv_integrity,
 )
+from .uniqueness import (
+    CsvUniquenessErrorCode,
+    CsvUniquenessIssue,
+    CsvUniquenessValidationResult,
+    validate_csv_uniqueness,
+)
 
 __all__ = [
     "CSV_SCHEMAS",
@@ -57,4 +63,8 @@ __all__ = [
     "CsvIntegrityIssue",
     "CsvIntegrityValidationResult",
     "validate_csv_integrity",
+    "CsvUniquenessErrorCode",
+    "CsvUniquenessIssue",
+    "CsvUniquenessValidationResult",
+    "validate_csv_uniqueness",
 ]
