@@ -15,6 +15,7 @@ from .schemas import (
     CsvSchema,
     DataType,
 )
+from .reader import CsvReadErrorCode, CsvReadIssue, CsvReadResult, read_csv_file
 
 __all__ = [
     "CSV_SCHEMAS",
@@ -30,4 +31,8 @@ __all__ = [
     "ColumnSchema",
     "CsvSchema",
     "DataType",
+    "CsvReadErrorCode",
+    "CsvReadIssue",
+    "CsvReadResult",
+    "read_csv_file",
 ]
