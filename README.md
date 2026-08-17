@@ -4,9 +4,9 @@ Multi-channel order reconciliation and e-commerce operations analytics.
 
 ## Project status
 
-**Python project structure and development environment configured**
+**Phase 2 complete: normalized CSV validation pipeline implemented**
 
-This repository contains the approved project documentation, the initial package structure, and a reproducible Python development environment. The application logic is not implemented or operational yet.
+The project now provides a tested validation layer for the five normalized MVP CSV files. It reads complete dataset directories, applies structural and data-quality checks in a deterministic order, and produces uniform immutable reports. The reconciliation rules and user interface are not implemented yet.
 
 ## The problem
 
@@ -15,6 +15,23 @@ E-commerce operations often span multiple sales channels and systems. Orders, pa
 ## Project objective
 
 KZ EcomOps Control Tower aims to normalize synthetic multi-channel data into a common model and identify operational or financial inconsistencies. The first MVP module will focus exclusively on order reconciliation.
+
+## Implemented validation
+
+The current validation pipeline includes:
+
+- immutable schemas for the five required normalized CSV files;
+- safe UTF-8 CSV reading, including optional UTF-8 BOM support;
+- structural checks for headers, duplicate columns, field counts, and required columns;
+- cell-level checks for required values, allowed values, monetary formats, limits, and timezone-aware ISO 8601 date-times;
+- record-level integrity checks, including deterministic order identifiers, order-total arithmetic, and status-dependent fields;
+- blocking uniqueness checks for order, shipment, and return identifiers;
+- non-blocking cross-file relationship findings for missing or inconsistent references;
+- end-to-end directory validation with per-file and dataset-level counts and reports.
+
+Structural, value, integrity, and blocking uniqueness errors prevent the dataset from being marked ready for reconciliation. Relationship findings do not reject rows or block readiness: they remain attached to the report for the future `REC-10` reconciliation rule.
+
+The validator never rewrites source CSV files or removes records. Platform-specific source normalization, permanent demonstration datasets, database storage, and reconciliation logic remain future work.
 
 ## Required MVP data files
 
@@ -79,6 +96,24 @@ python3.13 -m venv .venv
 
 The `.venv` directory must not be published or committed. It is recreated locally from the dependency information in `pyproject.toml`.
 
+## Running the tests
+
+From the project root, run the complete automated suite with the virtual environment interpreter:
+
+### Windows
+
+```powershell
+.\.venv\Scripts\python.exe -m pytest -q
+.\.venv\Scripts\python.exe -m pip check
+```
+
+### macOS and Linux
+
+```bash
+./.venv/bin/python -m pytest -q
+./.venv/bin/python -m pip check
+```
+
 ## Documentation
 
 - [Project overview](docs/PROJECT_OVERVIEW.md)
@@ -93,9 +128,9 @@ All data included in this public project will be entirely synthetic. Real custom
 ## Roadmap
 
 1. Planning and repository setup — completed.
-2. Python project configuration and dependency setup — current phase.
-3. CSV schemas and data validation.
-4. Synthetic test datasets.
+2. Python project configuration and dependency setup — completed.
+3. CSV schemas and complete validation pipeline — completed.
+4. Synthetic demonstration datasets — next phase.
 5. Data normalization and local SQLite storage.
 6. Order reconciliation engine.
 7. Streamlit user interface.
@@ -110,4 +145,4 @@ This project is intended to be released under the [MIT License](LICENSE).
 
 ## Introduzione in italiano
 
-KZ EcomOps Control Tower è un progetto dimostrativo per il controllo operativo di un e-commerce multicanale. La struttura Python e l’ambiente di sviluppo sono configurati, ma la logica aziendale non è stata ancora implementata. La prima versione confronterà ordini, pagamenti, spedizioni, resi e rimborsi utilizzando esclusivamente dati sintetici.
+KZ EcomOps Control Tower è un progetto dimostrativo per il controllo operativo di un e-commerce multicanale. La pipeline di validazione dei cinque CSV normalizzati è ora implementata e testata: distingue gli errori bloccanti dai problemi di relazione che saranno analizzati dalla futura riconciliazione. Il prossimo passo sarà creare dati dimostrativi interamente sintetici; le regole `REC-01`–`REC-10`, SQLite e l'interfaccia Streamlit non sono ancora implementati.
