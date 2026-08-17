@@ -88,6 +88,7 @@ def _return(
     *,
     expected: str = "100.00",
     received_at: str = "2026-03-10T12:00:00+00:00",
+    status: str = "received",
 ) -> dict[str, str]:
     return _row(
         "returns.csv",
@@ -95,8 +96,8 @@ def _return(
         platform="shopify",
         order_id="shopify:ORDER-1",
         source_order_id="ORDER-1",
-        return_status="received",
-        received_at=received_at,
+        return_status=status,
+        received_at=received_at if status in {"received", "completed"} else "",
         expected_refund_amount=expected,
         currency="EUR" if expected else "",
     )
@@ -209,6 +210,33 @@ def test_rec07_ambiguous_unlinked_refund_is_not_evaluated() -> None:
     assert not evaluation.anomalies
     assert len(evaluation.not_evaluated) == 2
     assert all("unambiguously" in item.reason for item in evaluation.not_evaluated)
+
+
+def test_rec07_unlinked_refund_is_ambiguous_across_all_order_returns() -> None:
+    context, frames = _context(
+        returns=(
+            _return("RETURN-RECEIVED", expected="100.00"),
+            _return("RETURN-REQUESTED", status="requested"),
+        ),
+        refunds=(_refund(amount="100.00", return_id=""),),
+    )
+    originals = {name: frame.copy(deep=True) for name, frame in frames.items()}
+
+    evaluation = evaluate_rec_07(context, REFERENCE_AT, ReconciliationConfig())
+
+    assert not evaluation.anomalies
+    assert len(evaluation.not_evaluated) == 1
+    unavailable = evaluation.not_evaluated[0]
+    assert "unambiguously" in unavailable.reason
+    assert "multiple returns" in unavailable.reason
+    assert {reference.record_id for reference in unavailable.record_references} == {
+        "shopify:ORDER-1",
+        "RETURN-RECEIVED",
+        "RETURN-REQUESTED",
+        "REFUND-1|PROVIDER-REFUND-1",
+    }
+    for filename, frame in frames.items():
+        pd.testing.assert_frame_equal(frame, originals[filename])
 
 
 def test_rec08_positive_boundary_ignored_and_aggregate_refunds() -> None:

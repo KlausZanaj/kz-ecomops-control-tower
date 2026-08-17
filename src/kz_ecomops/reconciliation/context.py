@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import hashlib
+import json
 from collections.abc import Mapping
 from dataclasses import dataclass
 from types import MappingProxyType
@@ -27,7 +29,7 @@ class IndexedRecord:
         return self.values.get(column, "")
 
 
-def _record_identifier(filename: str, values: Mapping[str, str], row_number: int) -> str:
+def _record_identifier(filename: str, values: Mapping[str, str]) -> str:
     identifier_columns = {
         "orders.csv": ("order_id",),
         "payments.csv": ("payment_id", "provider_transaction_id"),
@@ -37,7 +39,14 @@ def _record_identifier(filename: str, values: Mapping[str, str], row_number: int
     }[filename]
     identifiers = tuple(values.get(column, "").strip() for column in identifier_columns)
     available = tuple(value for value in identifiers if value)
-    return "|".join(available) if available else f"row-{row_number}"
+    if available:
+        return "|".join(available)
+    material = json.dumps(
+        dict(sorted(values.items())),
+        ensure_ascii=False,
+        separators=(",", ":"),
+    ).encode("utf-8")
+    return f"content-{hashlib.sha256(material).hexdigest()}"
 
 
 def _freeze_grouped(
@@ -97,7 +106,7 @@ class ReconciliationContext:
                     reference=RecordReference(
                         filename=filename,
                         row_number=row_number,
-                        record_id=_record_identifier(filename, values, row_number),
+                        record_id=_record_identifier(filename, values),
                     ),
                 )
                 records.append(record)

@@ -100,22 +100,23 @@ def deterministic_anomaly_id(
     *,
     discriminator: str = "",
 ) -> str:
-    """Build a stable anomaly ID from a rule and sorted source references."""
+    """Build a stable anomaly ID from business references, not row positions."""
 
     if not isinstance(rule_code, RuleCode):
         raise TypeError("rule_code must be a RuleCode.")
-    ordered_references = sorted(references)
+    business_references = sorted(
+        (reference.filename, reference.record_id) for reference in references
+    )
     material = json.dumps(
         {
             "rule_code": rule_code.value,
             "discriminator": discriminator,
             "references": [
                 {
-                    "filename": reference.filename,
-                    "row_number": reference.row_number,
-                    "record_id": reference.record_id,
+                    "filename": filename,
+                    "record_id": record_id,
                 }
-                for reference in ordered_references
+                for filename, record_id in business_references
             ],
         },
         ensure_ascii=False,

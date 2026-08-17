@@ -3,11 +3,13 @@
 from __future__ import annotations
 
 import json
+import shutil
 import sqlite3
 from dataclasses import replace
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
+import pandas as pd
 import pytest
 
 from kz_ecomops.reconciliation import (
@@ -82,6 +84,55 @@ def test_second_persistence_is_idempotent(tmp_path: Path) -> None:
     assert first.inserted_count == 1 and first.existing_count == 0
     assert second.inserted_count == 0 and second.existing_count == 1
     assert len(read_stored_anomalies(database)) == 1
+
+
+def test_reordered_records_keep_ids_and_refresh_stored_row_references(
+    tmp_path: Path,
+) -> None:
+    source = SAMPLE_ROOT / "scenarios" / "rec-10-cross-system-record-missing"
+    reordered_directory = tmp_path / "reordered"
+    shutil.copytree(source, reordered_directory)
+    shipments_path = reordered_directory / "shipments.csv"
+    shipments = pd.read_csv(shipments_path, dtype=str, keep_default_na=False)
+    shipments.iloc[::-1].reset_index(drop=True).to_csv(shipments_path, index=False)
+
+    original_result = reconcile_dataset(
+        validate_dataset_directory(source),
+        REFERENCE_AT,
+    )
+    reordered_result = reconcile_dataset(
+        validate_dataset_directory(reordered_directory),
+        REFERENCE_AT,
+    )
+
+    assert {item.anomaly_id for item in original_result.anomalies} == {
+        item.anomaly_id for item in reordered_result.anomalies
+    }
+    original_reference = next(
+        reference
+        for reference in original_result.anomalies[0].record_references
+        if reference.record_id == "ship-REC10-MISSING-9001"
+    )
+    reordered_reference = next(
+        reference
+        for reference in reordered_result.anomalies[0].record_references
+        if reference.record_id == "ship-REC10-MISSING-9001"
+    )
+    assert original_reference.row_number == 2
+    assert reordered_reference.row_number == 1
+
+    database = tmp_path / "reordered.db"
+    first = persist_reconciliation_result(database, original_result)
+    second = persist_reconciliation_result(database, reordered_result)
+    stored_reference = next(
+        reference
+        for reference in read_stored_anomalies(database)[0].anomaly.record_references
+        if reference.record_id == "ship-REC10-MISSING-9001"
+    )
+
+    assert first.inserted_count == 1 and first.existing_count == 0
+    assert second.inserted_count == 0 and second.existing_count == 1
+    assert stored_reference.row_number == 1
 
 
 def test_review_status_and_first_detection_survive_later_upsert(tmp_path: Path) -> None:

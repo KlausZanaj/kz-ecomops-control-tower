@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from dataclasses import replace
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -92,6 +93,25 @@ def test_relationship_findings_do_not_block_rec10() -> None:
     result = reconcile_dataset(validation, REFERENCE_AT)
 
     assert len(result.anomalies) == 1
+    assert result.anomalies[0].rule_code.value == "REC-10"
+
+
+def test_repeated_rec10_findings_are_grouped_without_duplicate_ids() -> None:
+    validation = validate_dataset_directory(
+        SAMPLE_ROOT / "scenarios" / "rec-10-cross-system-record-missing"
+    )
+    files = tuple(
+        replace(file_report, messages=file_report.messages * 2)
+        if file_report.relationship_finding_count
+        else file_report
+        for file_report in validation.report.files
+    )
+    repeated = replace(validation, report=replace(validation.report, files=files))
+
+    result = reconcile_dataset(repeated, REFERENCE_AT)
+
+    assert len(result.anomalies) == 1
+    assert len({anomaly.anomaly_id for anomaly in result.anomalies}) == 1
     assert result.anomalies[0].rule_code.value == "REC-10"
 
 

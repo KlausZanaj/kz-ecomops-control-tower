@@ -83,7 +83,9 @@ def _payment(
     status: str = "succeeded",
     provider_id: str = "",
     paid_at: str = "2026-03-01T10:00:00+00:00",
+    event_at: str | None = None,
 ) -> dict[str, str]:
+    effective_event_at = paid_at if event_at is None else event_at
     return _row(
         "payments.csv",
         payment_id=payment_id,
@@ -95,6 +97,8 @@ def _payment(
         amount=amount,
         currency="EUR",
         paid_at=paid_at if status == "succeeded" else "",
+        created_at=effective_event_at,
+        updated_at=effective_event_at,
     )
 
 
@@ -175,6 +179,46 @@ def test_rec02_ignores_unconfirmed_payment_and_departed_shipment() -> None:
     )
     assert not _run(RuleCode.REC_02, pending).anomalies
     assert not _run(RuleCode.REC_02, shipped).anomalies
+
+
+def test_rec02_reversal_restarts_the_shipping_clock_without_mutating_inputs() -> None:
+    second_paid_at = "2026-03-01T11:00:00+00:00"
+    context, frames = _context(
+        payments=(
+            _payment("PAY-1", "100.00", paid_at="2026-03-01T09:00:00+00:00"),
+            _payment(
+                "PAY-REVERSAL",
+                "100.00",
+                status="reversed",
+                event_at="2026-03-01T10:00:00+00:00",
+            ),
+            _payment("PAY-2", "100.00", paid_at=second_paid_at),
+        )
+    )
+    originals = {name: frame.copy(deep=True) for name, frame in frames.items()}
+
+    before_limit = datetime(2026, 3, 3, 10, 59, 59, tzinfo=timezone.utc)
+    after_limit = datetime(2026, 3, 3, 11, 0, 1, tzinfo=timezone.utc)
+    assert not _run(RuleCode.REC_02, context, reference_at=before_limit).anomalies
+    anomalies = _run(RuleCode.REC_02, context, reference_at=after_limit).anomalies
+
+    assert len(anomalies) == 1
+    assert anomalies[0].compared_values["paid_at"] == second_paid_at
+    for filename, frame in frames.items():
+        pd.testing.assert_frame_equal(frame, originals[filename])
+
+
+def test_rec02_treats_overpayment_as_complete() -> None:
+    context, _ = _context(payments=(_payment("PAY-1", "110.00"),))
+
+    anomalies = _run(
+        RuleCode.REC_02,
+        context,
+        reference_at=datetime(2026, 3, 3, 10, 0, 1, tzinfo=timezone.utc),
+    ).anomalies
+
+    assert len(anomalies) == 1
+    assert anomalies[0].compared_values["paid_at"] == "2026-03-01T10:00:00+00:00"
 
 
 def test_rec03_positive_full_payment_boundary_ignored_and_aggregate() -> None:

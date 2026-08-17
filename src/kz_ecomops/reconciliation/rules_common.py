@@ -62,26 +62,40 @@ def completed_payment_at(
     usable_payments: tuple[IndexedRecord, ...],
     tolerance: Decimal,
 ) -> datetime | None:
-    """Return the succeeded timestamp at which the order first became fully paid."""
+    """Return the latest succeeded timestamp that restores full net payment."""
 
     target = Decimal(order.get("order_total")) - tolerance
-    succeeded = sorted(
-        (
-            payment
-            for payment in usable_payments
-            if payment.get("payment_status") == "succeeded" and payment.get("paid_at")
-        ),
-        key=lambda payment: (
-            parse_datetime(payment.get("paid_at")),
-            payment.reference,
-        ),
-    )
     accumulated = Decimal("0")
-    for payment in succeeded:
-        accumulated += Decimal(payment.get("amount"))
-        if accumulated >= target:
-            return parse_datetime(payment.get("paid_at"))
-    return None
+    events: list[tuple[datetime, int, str, IndexedRecord]] = []
+
+    for payment in usable_payments:
+        status = payment.get("payment_status")
+        if status == "succeeded" and payment.get("paid_at"):
+            event_at = parse_datetime(payment.get("paid_at"))
+            events.append((event_at, 0, payment.reference.record_id, payment))
+            continue
+        if status == "reversed":
+            event_text = payment.get("updated_at") or payment.get("created_at")
+            if event_text:
+                event_at = parse_datetime(event_text)
+                events.append((event_at, 1, payment.reference.record_id, payment))
+            else:
+                # Validated exports always provide an event timestamp. Keeping an
+                # undated reversal in the opening balance is the conservative
+                # fallback for direct callers of this helper.
+                accumulated -= Decimal(payment.get("amount"))
+
+    completed_at = None
+    for event_at, _, _, payment in sorted(events, key=lambda item: item[:3]):
+        if payment.get("payment_status") == "succeeded":
+            accumulated += Decimal(payment.get("amount"))
+            if accumulated >= target and completed_at is None:
+                completed_at = event_at
+        else:
+            accumulated -= Decimal(payment.get("amount"))
+            if accumulated < target:
+                completed_at = None
+    return completed_at
 
 
 def make_anomaly(

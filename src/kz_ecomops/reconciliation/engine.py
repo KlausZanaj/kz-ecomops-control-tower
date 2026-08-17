@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from dataclasses import replace
 from datetime import datetime
 from enum import StrEnum
 
@@ -10,7 +11,11 @@ import pandas as pd
 from kz_ecomops.validation import CSV_SCHEMAS, DatasetValidationResult
 
 from .context import ReconciliationContext
-from .domain import ReconciliationConfig, ReconciliationResult
+from .domain import (
+    ReconciliationAnomaly,
+    ReconciliationConfig,
+    ReconciliationResult,
+)
 from .rules_01_05 import (
     evaluate_rec_01,
     evaluate_rec_02,
@@ -41,6 +46,32 @@ class ReconciliationError(ValueError):
     def __init__(self, code: ReconciliationErrorCode, message: str) -> None:
         super().__init__(message)
         self.code = code
+
+
+def _merge_duplicate_anomalies(
+    anomalies: tuple[ReconciliationAnomaly, ...],
+) -> tuple[ReconciliationAnomaly, ...]:
+    """Group repeated business anomalies while retaining current row references."""
+
+    grouped: dict[str, ReconciliationAnomaly] = {}
+    for anomaly in anomalies:
+        existing = grouped.get(anomaly.anomaly_id)
+        if existing is None:
+            grouped[anomaly.anomaly_id] = anomaly
+            continue
+        references = {
+            (
+                reference.filename,
+                reference.row_number,
+                reference.record_id,
+            ): reference
+            for reference in (*existing.record_references, *anomaly.record_references)
+        }
+        grouped[anomaly.anomaly_id] = replace(
+            existing,
+            record_references=tuple(references.values()),
+        )
+    return tuple(grouped.values())
 
 
 def _validated_dataframes(
@@ -123,14 +154,15 @@ def reconcile_dataset(
             effective_config,
         ),
     )
+    anomalies = tuple(
+        anomaly
+        for evaluation in evaluations
+        for anomaly in evaluation.anomalies
+    )
     return ReconciliationResult(
         reference_at=reference_at,
         config=effective_config,
-        anomalies=tuple(
-            anomaly
-            for evaluation in evaluations
-            for anomaly in evaluation.anomalies
-        ),
+        anomalies=_merge_duplicate_anomalies(anomalies),
         not_evaluated=tuple(
             unavailable
             for evaluation in evaluations

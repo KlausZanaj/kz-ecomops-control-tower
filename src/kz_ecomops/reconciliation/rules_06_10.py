@@ -76,8 +76,8 @@ def evaluate_rec_06(
 def _associated_refunds(
     context: ReconciliationContext,
     returned_item: IndexedRecord,
-    received_returns: tuple[IndexedRecord, ...],
-) -> tuple[tuple[IndexedRecord, ...], bool]:
+    all_returns: tuple[IndexedRecord, ...],
+) -> tuple[tuple[IndexedRecord, ...], tuple[IndexedRecord, ...]]:
     succeeded = tuple(
         refund
         for refund in context.for_order("refunds.csv", returned_item.get("order_id"))
@@ -89,11 +89,13 @@ def _associated_refunds(
         if refund.get("return_id") == returned_item.get("return_id")
     )
     unlinked = tuple(refund for refund in succeeded if not refund.get("return_id").strip())
-    if len(received_returns) == 1:
-        return tuple(sorted((*direct, *unlinked), key=lambda item: item.reference)), False
+    if len(all_returns) == 1:
+        return tuple(sorted((*direct, *unlinked), key=lambda item: item.reference)), ()
     if direct:
-        return tuple(sorted(direct, key=lambda item: item.reference)), False
-    return (), bool(unlinked)
+        return tuple(sorted(direct, key=lambda item: item.reference)), ()
+    if unlinked:
+        return (), tuple((*all_returns, *unlinked))
+    return (), ()
 
 
 def _rec07_anomaly(
@@ -150,16 +152,18 @@ def evaluate_rec_07(
 
     for order_id in sorted(received_by_order):
         received_returns = tuple(received_by_order[order_id])
+        all_returns = context.for_order("returns.csv", order_id)
         for returned_item in received_returns:
             received_at = parse_datetime(returned_item.get("received_at"))
             if reference_at - received_at <= config.return_refund_limit:
                 continue
-            refunds, ambiguous = _associated_refunds(
-                context, returned_item, received_returns
+            refunds, ambiguity_records = _associated_refunds(
+                context, returned_item, all_returns
             )
             order = context.orders_by_id.get(order_id)
-            if ambiguous:
-                records = ((order,) if order is not None else ()) + (returned_item,)
+            if ambiguity_records:
+                records = ((order,) if order is not None else ()) + ambiguity_records
+                unique_records = {record.reference: record for record in records}
                 not_evaluated.append(
                     RuleNotEvaluated(
                         rule_code=RuleCode.REC_07,
@@ -167,9 +171,9 @@ def evaluate_rec_07(
                         platform=returned_item.get("platform"),
                         reason=(
                             "A confirmed refund without return_id cannot be assigned "
-                            "unambiguously to one of multiple received returns."
+                            "unambiguously because the order has multiple returns."
                         ),
-                        record_references=tuple(record.reference for record in records),
+                        record_references=tuple(unique_records),
                     )
                 )
                 continue

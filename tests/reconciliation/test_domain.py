@@ -142,6 +142,34 @@ def test_anomaly_id_is_stable_and_reference_order_independent() -> None:
     assert expected != deterministic_anomaly_id(RuleCode.REC_02, (second, first))
 
 
+def test_anomaly_id_ignores_row_positions_but_keeps_business_identity() -> None:
+    first_run = RecordReference("payments.csv", 2, "PAY-1|TXN-1")
+    reordered_run = RecordReference("payments.csv", 9, "PAY-1|TXN-1")
+    order = RecordReference("orders.csv", 1, "shopify:ORDER-1")
+
+    expected = deterministic_anomaly_id(
+        RuleCode.REC_04,
+        (first_run, order),
+        discriminator="duplicate-payment",
+    )
+
+    assert expected == deterministic_anomaly_id(
+        RuleCode.REC_04,
+        (order, reordered_run),
+        discriminator="duplicate-payment",
+    )
+    assert expected != deterministic_anomaly_id(
+        RuleCode.REC_04,
+        (RecordReference("payments.csv", 9, "PAY-2|TXN-2"), order),
+        discriminator="duplicate-payment",
+    )
+    assert expected != deterministic_anomaly_id(
+        RuleCode.REC_04,
+        (reordered_run, order),
+        discriminator="different-group",
+    )
+
+
 def test_anomaly_mappings_and_references_are_protected_and_sorted() -> None:
     anomaly = _anomaly()
     with pytest.raises(TypeError):

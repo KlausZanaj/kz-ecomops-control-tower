@@ -91,7 +91,7 @@ def evaluate_rec_02(
             continue
         net_paid, usable = payment_net(context, order)
         order_total = Decimal(order.get("order_total"))
-        if abs(net_paid - order_total) > config.monetary_tolerance:
+        if net_paid < order_total - config.monetary_tolerance:
             continue
         paid_at = completed_payment_at(order, usable, config.monetary_tolerance)
         if paid_at is None:
