@@ -54,10 +54,21 @@ def test_valid_upload_validation_and_reconciliation_path() -> None:
     _button(app, "Validate dataset").click().run(timeout=10)
     assert any("Ready for reconciliation" in item.value for item in app.success)
     assert not _button(app, "Run reconciliation").disabled
+    metrics = {metric.label: str(metric.value) for metric in app.metric}
+    assert metrics["Anomalies"] == "Not calculated"
 
     _button(app, "Run reconciliation").click().run(timeout=10)
     assert any("Reconciliation completed successfully" in item.value for item in app.success)
-    assert app.session_state["reconciliation_result"].anomalies[0].rule_code.value == "REC-02"
+    result = app.session_state["reconciliation_result"]
+    assert result.anomalies[0].rule_code.value == "REC-02"
+    metrics = {metric.label: str(metric.value) for metric in app.metric}
+    assert metrics["Anomalies"] == "1"
+    assert len(app.multiselect) == 4
+
+    anomaly_id = result.anomalies[0].anomaly_id
+    app.selectbox[0].set_value(anomaly_id).run(timeout=10)
+    assert any(item.value == "Anomaly detail" for item in app.subheader)
+    assert any("Compared values" in item.value for item in app.markdown)
 
 
 def test_invalid_dataset_keeps_reconciliation_disabled() -> None:

@@ -9,6 +9,13 @@ import streamlit as st
 from kz_ecomops.validation import ValidationMessage, ValidationStage
 
 from .uploads import REQUIRED_FILENAMES, inspect_uploads
+from .presentation import (
+    anomaly_detail,
+    anomaly_table_rows,
+    filter_anomalies,
+    not_evaluated_rows,
+    operational_summary,
+)
 from .workflow import (
     build_reconciliation_config,
     reconcile_validation_result,
@@ -68,7 +75,7 @@ def _render_validation_report() -> None:
             for file_report in report.files
         ],
         hide_index=True,
-        use_container_width=True,
+        width="stretch",
     )
     blocking = tuple(message for message in report.messages if message.blocking)
     relationships = tuple(
@@ -78,7 +85,7 @@ def _render_validation_report() -> None:
     )
     if blocking:
         st.error("Blocking validation problems must be corrected before reconciliation.")
-        st.dataframe(_message_rows(blocking), hide_index=True, use_container_width=True)
+        st.dataframe(_message_rows(blocking), hide_index=True, width="stretch")
     else:
         st.success("No blocking validation problems were found.")
     if relationships:
@@ -86,7 +93,7 @@ def _render_validation_report() -> None:
         st.dataframe(
             _message_rows(relationships),
             hide_index=True,
-            use_container_width=True,
+            width="stretch",
         )
     if report.reconciliation_ready:
         st.success("Ready for reconciliation")
@@ -149,6 +156,93 @@ def _render_reconciliation_controls() -> None:
             st.success("Reconciliation completed successfully.")
 
 
+def _render_operational_summary() -> None:
+    st.subheader("Operational summary")
+    summary = operational_summary(
+        st.session_state.validation_result,
+        st.session_state.reconciliation_result,
+    )
+    first_row = st.columns(6)
+    for column, label in zip(first_row, tuple(summary)[:6], strict=True):
+        column.metric(label, summary[label])
+    second_row = st.columns(3)
+    for column, label in zip(second_row, tuple(summary)[6:], strict=True):
+        column.metric(label, summary[label])
+
+
+def _render_anomaly_dashboard() -> None:
+    result = st.session_state.reconciliation_result
+    st.subheader("3. Reconciliation results")
+    if result is None:
+        st.info("Anomalies are not calculated until reconciliation is run.")
+        return
+
+    anomalies = result.anomalies
+    filters = st.columns(4)
+    platforms = filters[0].multiselect(
+        "Filter by platform",
+        sorted({item.platform for item in anomalies}),
+    )
+    codes = filters[1].multiselect(
+        "Filter by anomaly code",
+        sorted({item.anomaly_code.value for item in anomalies}),
+    )
+    severities = filters[2].multiselect(
+        "Filter by severity",
+        sorted({item.severity.value for item in anomalies}),
+    )
+    statuses = filters[3].multiselect(
+        "Filter by review status",
+        sorted({item.review_status.value for item in anomalies}),
+    )
+    filtered = filter_anomalies(
+        anomalies,
+        platforms=platforms,
+        anomaly_codes=codes,
+        severities=severities,
+        review_statuses=statuses,
+    )
+    st.caption(f"Showing {len(filtered)} of {len(anomalies)} anomalies.")
+    if filtered:
+        st.dataframe(
+            anomaly_table_rows(filtered),
+            hide_index=True,
+            width="stretch",
+        )
+        selected_id = st.selectbox(
+            "Select an anomaly to inspect",
+            options=(None, *(item.anomaly_id for item in filtered)),
+            format_func=lambda value: "Choose an anomaly" if value is None else value,
+        )
+        if selected_id is not None:
+            selected = next(item for item in filtered if item.anomaly_id == selected_id)
+            detail = anomaly_detail(selected)
+            st.subheader("Anomaly detail")
+            fields = {
+                key: value
+                for key, value in detail.items()
+                if key not in {"Compared values", "Record references"}
+            }
+            st.table([fields])
+            st.write("Compared values")
+            st.json(dict(detail["Compared values"]))
+            st.write("Source record references")
+            st.dataframe(
+                detail["Record references"],
+                hide_index=True,
+                width="stretch",
+            )
+    else:
+        st.info("No anomalies match the selected filters.")
+
+    st.subheader("Checks not evaluated")
+    unavailable = not_evaluated_rows(result.not_evaluated)
+    if unavailable:
+        st.dataframe(unavailable, hide_index=True, width="stretch")
+    else:
+        st.info("All applicable reconciliation checks were evaluated.")
+
+
 def render_app() -> None:
     """Render the user-facing upload foundation."""
 
@@ -195,6 +289,8 @@ def render_app() -> None:
 
     _render_validation_report()
     _render_reconciliation_controls()
+    _render_operational_summary()
+    _render_anomaly_dashboard()
 
 
 __all__ = ["SUBTITLE", "TITLE", "render_app"]

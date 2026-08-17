@@ -13,6 +13,13 @@ from .workflow import (
     upload_signature,
     validate_uploads,
 )
+from .presentation import (
+    anomaly_detail,
+    anomaly_table_rows,
+    filter_anomalies,
+    not_evaluated_rows,
+    operational_summary,
+)
 
 __all__ = [
     "REQUIRED_FILENAMES",
@@ -24,4 +31,9 @@ __all__ = [
     "reconcile_validation_result",
     "upload_signature",
     "validate_uploads",
+    "anomaly_detail",
+    "anomaly_table_rows",
+    "filter_anomalies",
+    "not_evaluated_rows",
+    "operational_summary",
 ]
