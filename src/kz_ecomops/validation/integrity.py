@@ -21,7 +21,6 @@ class CsvIntegrityErrorCode(StrEnum):
     ORDER_ID_MISMATCH = "order_id_mismatch"
     ORDER_TOTAL_MISMATCH = "order_total_mismatch"
     MISSING_PAID_AT = "missing_paid_at"
-    MISSING_TRACKING_NUMBER = "missing_tracking_number"
     MISSING_SHIPPED_AT = "missing_shipped_at"
     MISSING_DELIVERED_AT = "missing_delivered_at"
     MISSING_RECEIVED_AT = "missing_received_at"
@@ -200,16 +199,6 @@ def _shipment_issues(
         return ()
 
     issues: list[CsvIntegrityIssue] = []
-    if _is_missing(dataframe, row_position, "tracking_number"):
-        issues.append(
-            _issue(
-                CsvIntegrityErrorCode.MISSING_TRACKING_NUMBER,
-                schema,
-                row_number,
-                ("shipment_status", "tracking_number"),
-                "a shipped or delivered shipment requires a tracking number.",
-            )
-        )
     if _is_missing(dataframe, row_position, "shipped_at"):
         issues.append(
             _issue(

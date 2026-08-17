@@ -257,21 +257,26 @@ def test_accepts_complete_shipped_shipment() -> None:
     assert result.is_valid
 
 
-def test_reports_shipped_shipment_without_tracking() -> None:
-    _, result = _validate_integrity(
+def test_accepts_shipped_shipment_without_tracking_and_preserves_value() -> None:
+    dataframe, value_result = _validated_dataframe(
         "shipments.csv",
-        changes={"shipment_status": "shipped"},
-        omitted=("tracking_number", "delivered_at"),
+        changes={"shipment_status": "shipped", "tracking_number": ""},
+        omitted=("delivered_at",),
+    )
+    original = dataframe.copy(deep=True)
+    result = validate_csv_integrity(
+        dataframe, CSV_SCHEMAS["shipments.csv"], value_result
     )
 
-    issue = _only_issue(result)
-    assert issue.code is CsvIntegrityErrorCode.MISSING_TRACKING_NUMBER
+    assert result.is_valid
+    assert dataframe.loc[0, "tracking_number"] == ""
+    pd.testing.assert_frame_equal(dataframe, original)
 
 
 def test_reports_shipped_shipment_without_shipped_at() -> None:
     _, result = _validate_integrity(
         "shipments.csv",
-        changes={"shipment_status": "shipped"},
+        changes={"shipment_status": "shipped", "tracking_number": ""},
         omitted=("shipped_at", "delivered_at"),
     )
 
@@ -285,14 +290,39 @@ def test_accepts_complete_delivered_shipment() -> None:
     assert result.is_valid
 
 
-def test_delivered_shipment_reports_three_missing_fields_in_order() -> None:
+def test_accepts_delivered_shipment_without_tracking_and_preserves_value() -> None:
+    dataframe, value_result = _validated_dataframe(
+        "shipments.csv", changes={"tracking_number": ""}
+    )
+    original = dataframe.copy(deep=True)
+    result = validate_csv_integrity(
+        dataframe, CSV_SCHEMAS["shipments.csv"], value_result
+    )
+
+    assert result.is_valid
+    assert dataframe.loc[0, "tracking_number"] == ""
+    pd.testing.assert_frame_equal(dataframe, original)
+
+
+def test_reports_delivered_shipment_without_delivered_at() -> None:
     _, result = _validate_integrity(
         "shipments.csv",
-        omitted=("tracking_number", "shipped_at", "delivered_at"),
+        changes={"tracking_number": ""},
+        omitted=("delivered_at",),
+    )
+
+    issue = _only_issue(result)
+    assert issue.code is CsvIntegrityErrorCode.MISSING_DELIVERED_AT
+
+
+def test_delivered_shipment_reports_two_missing_dates_in_order() -> None:
+    _, result = _validate_integrity(
+        "shipments.csv",
+        changes={"tracking_number": ""},
+        omitted=("shipped_at", "delivered_at"),
     )
 
     assert [issue.code for issue in result.issues] == [
-        CsvIntegrityErrorCode.MISSING_TRACKING_NUMBER,
         CsvIntegrityErrorCode.MISSING_SHIPPED_AT,
         CsvIntegrityErrorCode.MISSING_DELIVERED_AT,
     ]
@@ -403,13 +433,18 @@ def test_does_not_require_cancelled_at_for_cancelled_order() -> None:
     assert result.is_valid
 
 
-def test_treats_whitespace_only_conditional_field_as_missing() -> None:
-    _, result = _validate_integrity(
+def test_preserves_whitespace_only_tracking_number() -> None:
+    dataframe, value_result = _validated_dataframe(
         "shipments.csv", changes={"tracking_number": "   "}
     )
+    original = dataframe.copy(deep=True)
+    result = validate_csv_integrity(
+        dataframe, CSV_SCHEMAS["shipments.csv"], value_result
+    )
 
-    issue = _only_issue(result)
-    assert issue.code is CsvIntegrityErrorCode.MISSING_TRACKING_NUMBER
+    assert result.is_valid
+    assert dataframe.loc[0, "tracking_number"] == "   "
+    pd.testing.assert_frame_equal(dataframe, original)
 
 
 def test_issues_follow_row_then_rule_order() -> None:
@@ -422,6 +457,7 @@ def test_issues_follow_row_then_rule_order() -> None:
     )
     second_row = dict(VALID_INTEGRITY_ROWS["shipments.csv"])
     second_row["tracking_number"] = ""
+    second_row["shipped_at"] = ""
     dataframe = pd.DataFrame([first_row, second_row])
     value_result = validate_csv_values(dataframe, CSV_SCHEMAS["shipments.csv"])
     assert value_result.is_valid
@@ -432,10 +468,9 @@ def test_issues_follow_row_then_rule_order() -> None:
 
     assert [(issue.row_number, issue.code) for issue in result.issues] == [
         (1, CsvIntegrityErrorCode.ORDER_ID_MISMATCH),
-        (1, CsvIntegrityErrorCode.MISSING_TRACKING_NUMBER),
         (1, CsvIntegrityErrorCode.MISSING_SHIPPED_AT),
         (1, CsvIntegrityErrorCode.MISSING_DELIVERED_AT),
-        (2, CsvIntegrityErrorCode.MISSING_TRACKING_NUMBER),
+        (2, CsvIntegrityErrorCode.MISSING_SHIPPED_AT),
     ]
 
 
@@ -487,7 +522,6 @@ def test_integrity_error_code_values_are_exact() -> None:
         "order_id_mismatch",
         "order_total_mismatch",
         "missing_paid_at",
-        "missing_tracking_number",
         "missing_shipped_at",
         "missing_delivered_at",
         "missing_received_at",

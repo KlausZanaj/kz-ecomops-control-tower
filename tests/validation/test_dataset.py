@@ -142,6 +142,27 @@ def test_validates_complete_five_file_directory(tmp_path: Path) -> None:
     assert tuple(result.dataframes) == tuple(CSV_SCHEMAS)
 
 
+def test_shipped_without_tracking_remains_reconciliation_ready(
+    tmp_path: Path,
+) -> None:
+    rows = _valid_rows()
+    rows["shipments.csv"][0].update(
+        shipment_status="shipped",
+        tracking_number="",
+        shipped_at="2026-08-15T09:00:00+02:00",
+    )
+    _write_dataset(tmp_path, rows)
+
+    result = validate_dataset_directory(tmp_path)
+
+    assert result.report.reconciliation_ready
+    assert result.report.blocking_message_count == 0
+    assert result.report.rejected_row_count == 0
+    assert result.dataframes is not None
+    assert tuple(result.dataframes) == tuple(CSV_SCHEMAS)
+    assert result.dataframes["shipments.csv"].loc[0, "tracking_number"] == ""
+
+
 @pytest.mark.parametrize("use_string", [False, True])
 def test_accepts_path_and_string_directory(tmp_path: Path, use_string: bool) -> None:
     _write_dataset(tmp_path)

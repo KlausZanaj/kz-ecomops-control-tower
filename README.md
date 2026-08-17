@@ -24,12 +24,14 @@ The current validation pipeline includes:
 - safe UTF-8 CSV reading, including optional UTF-8 BOM support;
 - structural checks for headers, duplicate columns, field counts, and required columns;
 - cell-level checks for required values, allowed values, monetary formats, limits, and timezone-aware ISO 8601 date-times;
-- record-level integrity checks, including deterministic order identifiers, order-total arithmetic, and status-dependent fields;
+- record-level integrity checks, including deterministic order identifiers, order-total arithmetic, and required status-dependent dates;
 - blocking uniqueness checks for order, shipment, and return identifiers;
 - non-blocking cross-file relationship findings for missing or inconsistent references;
 - end-to-end directory validation with per-file and dataset-level counts and reports.
 
 Structural, value, integrity, and blocking uniqueness errors prevent the dataset from being marked ready for reconciliation. Relationship findings do not reject rows or block readiness: they remain attached to the report for the future `REC-10` reconciliation rule.
+
+Required shipment dates remain subject to status-dependent integrity checks. A shipped or delivered record without a tracking number is preserved for the future `REC-05` rule and does not block reconciliation readiness.
 
 The validator never rewrites source CSV files or removes records. Platform-specific source normalization, permanent demonstration datasets, database storage, and reconciliation logic remain future work.
 
@@ -145,4 +147,4 @@ This project is intended to be released under the [MIT License](LICENSE).
 
 ## Introduzione in italiano
 
-KZ EcomOps Control Tower è un progetto dimostrativo per il controllo operativo di un e-commerce multicanale. La pipeline di validazione dei cinque CSV normalizzati è ora implementata e testata: distingue gli errori bloccanti dai problemi di relazione che saranno analizzati dalla futura riconciliazione. Il prossimo passo sarà creare dati dimostrativi interamente sintetici; le regole `REC-01`–`REC-10`, SQLite e l'interfaccia Streamlit non sono ancora implementati.
+KZ EcomOps Control Tower è un progetto dimostrativo per il controllo operativo di un e-commerce multicanale. La pipeline di validazione dei cinque CSV normalizzati è ora implementata e testata: distingue gli errori bloccanti dai problemi di relazione che saranno analizzati dalla futura riconciliazione. Le date di spedizione obbligatorie restano controllate in base allo stato, mentre una spedizione senza tracking viene conservata per la futura regola `REC-05` senza bloccare la riconciliazione. Il prossimo passo sarà creare dati dimostrativi interamente sintetici; le regole `REC-01`–`REC-10`, SQLite e l'interfaccia Streamlit non sono ancora implementati.
