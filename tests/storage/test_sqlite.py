@@ -37,6 +37,43 @@ def _scenario(prefix: str) -> Path:
     return next((SAMPLE_ROOT / "scenarios").glob(f"{prefix}-*"))
 
 
+def _write_flexible_dataset(
+    directory: Path,
+    *,
+    omit_optional: bool = False,
+    extra_value: str | None = None,
+    reverse_columns: bool = False,
+) -> DatasetValidationResult:
+    source = _validated()
+    assert source.dataframes is not None
+    directory.mkdir()
+    conditionally_required = {
+        "payments.csv": {"paid_at"},
+        "shipments.csv": {"shipped_at", "delivered_at"},
+        "returns.csv": {"received_at", "expected_refund_amount", "currency"},
+        "refunds.csv": {"refunded_at"},
+    }
+    for filename, dataframe in source.dataframes.items():
+        flexible = dataframe.copy(deep=True)
+        if omit_optional:
+            removable = [
+                column.name
+                for column in CSV_SCHEMAS[filename].columns
+                if not column.required
+                and column.name not in conditionally_required.get(filename, set())
+            ]
+            flexible = flexible.drop(columns=removable)
+        if extra_value is not None:
+            flexible["ignored_source_context"] = extra_value
+        if reverse_columns:
+            flexible = flexible.loc[:, tuple(reversed(flexible.columns))]
+        flexible.to_csv(directory / filename, index=False, lineterminator="\n")
+    result = validate_dataset_directory(directory)
+    assert result.report.reconciliation_ready
+    assert result.dataframes is not None
+    return result
+
+
 def test_initializes_five_tables_without_cross_file_foreign_keys(tmp_path: Path) -> None:
     database = tmp_path / "control-tower.sqlite"
 
@@ -111,6 +148,96 @@ def test_second_import_is_idempotent(tmp_path: Path) -> None:
     assert second.inserted_total == 0
     assert second.existing_counts == {filename: 4 for filename in CSV_SCHEMAS}
     assert count_stored_records(database) == {filename: 4 for filename in CSV_SCHEMAS}
+
+
+def test_persists_validated_dataframes_with_optional_columns_absent(
+    tmp_path: Path,
+) -> None:
+    result = _write_flexible_dataset(
+        tmp_path / "optional-columns-absent",
+        omit_optional=True,
+    )
+    assert result.dataframes is not None
+    originals = {
+        filename: dataframe.copy(deep=True)
+        for filename, dataframe in result.dataframes.items()
+    }
+    database = tmp_path / "optional-columns.db"
+
+    first = persist_validated_dataset(database, result)
+    second = persist_validated_dataset(database, result)
+
+    assert first.inserted_counts == {filename: 4 for filename in CSV_SCHEMAS}
+    assert second.inserted_total == 0
+    assert second.existing_counts == {filename: 4 for filename in CSV_SCHEMAS}
+    assert read_stored_records(database, "orders.csv")[0].values["order_number"] == ""
+    assert read_stored_records(database, "payments.csv")[0].values["payment_method"] == ""
+    assert read_stored_records(database, "shipments.csv")[0].values["carrier"] == ""
+    assert read_stored_records(database, "returns.csv")[0].values["return_reason"] == ""
+    assert read_stored_records(database, "refunds.csv")[0].values["reason"] == ""
+    for filename in CSV_SCHEMAS:
+        pd.testing.assert_frame_equal(result.dataframes[filename], originals[filename])
+
+
+def test_ignores_extra_columns_and_extra_value_changes_for_idempotency(
+    tmp_path: Path,
+) -> None:
+    first_result = _write_flexible_dataset(
+        tmp_path / "extra-columns-first",
+        extra_value="first-synthetic-context",
+    )
+    second_result = _write_flexible_dataset(
+        tmp_path / "extra-columns-second",
+        extra_value="changed-synthetic-context",
+    )
+    assert first_result.dataframes is not None
+    assert second_result.dataframes is not None
+    assert "ignored_source_context" in first_result.dataframes["orders.csv"].columns
+    original = first_result.dataframes["orders.csv"].copy(deep=True)
+    database = tmp_path / "extra-columns.db"
+
+    first = persist_validated_dataset(database, first_result)
+    second = persist_validated_dataset(database, second_result)
+
+    assert first.inserted_total == 20
+    assert second.inserted_total == 0
+    assert second.existing_total == 20
+    assert "ignored_source_context" in first_result.dataframes["orders.csv"].columns
+    pd.testing.assert_frame_equal(first_result.dataframes["orders.csv"], original)
+    with sqlite3.connect(database) as connection:
+        table_columns = {
+            row[1] for row in connection.execute('PRAGMA table_info("orders")')
+        }
+    assert "ignored_source_context" not in table_columns
+
+
+def test_persists_reordered_columns_in_canonical_storage_positions(
+    tmp_path: Path,
+) -> None:
+    result = _write_flexible_dataset(
+        tmp_path / "reordered-columns",
+        reverse_columns=True,
+    )
+    assert result.dataframes is not None
+    assert tuple(result.dataframes["orders.csv"].columns) == tuple(
+        reversed(CSV_SCHEMAS["orders.csv"].column_names)
+    )
+    original = result.dataframes["payments.csv"].copy(deep=True)
+    database = tmp_path / "reordered-columns.db"
+
+    first = persist_validated_dataset(database, result)
+    second = persist_validated_dataset(database, result)
+    stored_order = read_stored_records(database, "orders.csv")[0]
+    stored_payment = read_stored_records(database, "payments.csv")[0]
+
+    assert first.inserted_total == 20
+    assert second.inserted_total == 0
+    assert second.existing_total == 20
+    assert stored_order.values["order_id"] == "shopify:SYN-SH-1001"
+    assert stored_order.values["source_order_id"] == "SYN-SH-1001"
+    assert stored_payment.values["amount"] == "100.00"
+    assert stored_payment.values["currency"] == "EUR"
+    pd.testing.assert_frame_equal(result.dataframes["payments.csv"], original)
 
 
 def test_deterministic_keys_match_across_fresh_databases(tmp_path: Path) -> None:
@@ -212,6 +339,31 @@ def test_rejects_incomplete_dataframe_mapping(tmp_path: Path) -> None:
 
     with pytest.raises(DatasetStorageError) as captured:
         persist_validated_dataset(database, incomplete)
+
+    assert captured.value.code is StorageErrorCode.INCOMPLETE_DATASET
+    assert not database.exists()
+
+
+def test_rejects_artificial_result_missing_required_column_before_database_creation(
+    tmp_path: Path,
+) -> None:
+    valid = _validated()
+    assert valid.dataframes is not None
+    artificial = DatasetValidationResult(
+        report=valid.report,
+        dataframes={
+            filename: (
+                dataframe.drop(columns=["currency"])
+                if filename == "orders.csv"
+                else dataframe
+            )
+            for filename, dataframe in valid.dataframes.items()
+        },
+    )
+    database = tmp_path / "missing-required.db"
+
+    with pytest.raises(DatasetStorageError) as captured:
+        persist_validated_dataset(database, artificial)
 
     assert captured.value.code is StorageErrorCode.INCOMPLETE_DATASET
     assert not database.exists()

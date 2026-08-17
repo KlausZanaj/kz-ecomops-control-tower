@@ -162,10 +162,21 @@ def _validate_result(result: object) -> DatasetValidationResult:
                 StorageErrorCode.INCOMPLETE_DATASET,
                 "Every canonical dataset entry must be a pandas DataFrame.",
             )
-        if tuple(dataframe.columns) != schema.column_names:
+        if dataframe.columns.has_duplicates:
             raise DatasetStorageError(
                 StorageErrorCode.INCOMPLETE_DATASET,
-                "Canonical DataFrame columns must exactly match their registered schema.",
+                "Canonical DataFrame column names must not be duplicated.",
+            )
+        available_columns = set(dataframe.columns)
+        missing_required_columns = tuple(
+            column.name
+            for column in schema.required_columns
+            if column.name not in available_columns
+        )
+        if missing_required_columns:
+            raise DatasetStorageError(
+                StorageErrorCode.INCOMPLETE_DATASET,
+                "Every canonical DataFrame must contain all required schema columns.",
             )
         file_report = result.report.get_file(filename)
         if (
@@ -177,9 +188,14 @@ def _validate_result(result: object) -> DatasetValidationResult:
                 StorageErrorCode.INVALID_RESULT,
                 "Validation report counts do not match the canonical DataFrames.",
             )
+        stored_columns = tuple(
+            column
+            for column in schema.column_names
+            if column in available_columns
+        )
         if any(
             not isinstance(value, str)
-            for value in dataframe.to_numpy().ravel()
+            for value in dataframe.loc[:, stored_columns].to_numpy().ravel()
         ):
             raise DatasetStorageError(
                 StorageErrorCode.INVALID_RESULT,
@@ -220,7 +236,11 @@ def _insert_dataframe(
     existing = 0
     for row_position in range(len(dataframe)):
         values = tuple(
-            dataframe.iloc[row_position, dataframe.columns.get_loc(column)]
+            (
+                dataframe.iloc[row_position, dataframe.columns.get_loc(column)]
+                if column in dataframe.columns
+                else ""
+            )
             for column in canonical_columns
         )
         payload = _record_payload(filename, values)
