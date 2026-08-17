@@ -2,9 +2,19 @@
 
 from __future__ import annotations
 
+from datetime import date, time
+
 import streamlit as st
 
+from kz_ecomops.validation import ValidationMessage, ValidationStage
+
 from .uploads import REQUIRED_FILENAMES, inspect_uploads
+from .workflow import (
+    build_reconciliation_config,
+    reconcile_validation_result,
+    upload_signature,
+    validate_uploads,
+)
 
 
 TITLE = "KZ EcomOps Control Tower"
@@ -20,6 +30,123 @@ def _initialize_state() -> None:
     for key, value in defaults.items():
         if key not in st.session_state:
             st.session_state[key] = value
+
+
+def _message_rows(messages: tuple[ValidationMessage, ...]) -> list[dict[str, str]]:
+    return [
+        {
+            "Stage": message.stage.value,
+            "Code": message.code,
+            "File": message.filename,
+            "Rows": ", ".join(map(str, message.row_numbers)) or "—",
+            "Columns": ", ".join(message.columns) or "—",
+            "Explanation": message.message,
+        }
+        for message in messages
+    ]
+
+
+def _render_validation_report() -> None:
+    result = st.session_state.validation_result
+    if result is None:
+        st.info("Validation has not been run for this upload selection.")
+        return
+    report = result.report
+    st.subheader("Validation report")
+    total, accepted, rejected = st.columns(3)
+    total.metric("Records processed", report.total_row_count)
+    accepted.metric("Records accepted", report.accepted_row_count)
+    rejected.metric("Records rejected", report.rejected_row_count)
+    st.dataframe(
+        [
+            {
+                "File": file_report.filename,
+                "Processed": file_report.row_count,
+                "Accepted": file_report.accepted_row_count,
+                "Rejected": file_report.rejected_row_count,
+            }
+            for file_report in report.files
+        ],
+        hide_index=True,
+        use_container_width=True,
+    )
+    blocking = tuple(message for message in report.messages if message.blocking)
+    relationships = tuple(
+        message
+        for message in report.messages
+        if message.stage is ValidationStage.RELATIONSHIP and not message.blocking
+    )
+    if blocking:
+        st.error("Blocking validation problems must be corrected before reconciliation.")
+        st.dataframe(_message_rows(blocking), hide_index=True, use_container_width=True)
+    else:
+        st.success("No blocking validation problems were found.")
+    if relationships:
+        st.warning("Non-blocking relationship findings will be evaluated by REC-10.")
+        st.dataframe(
+            _message_rows(relationships),
+            hide_index=True,
+            use_container_width=True,
+        )
+    if report.reconciliation_ready:
+        st.success("Ready for reconciliation")
+    else:
+        st.error("Reconciliation not available")
+
+
+def _render_reconciliation_controls() -> None:
+    st.subheader("2. Configure reconciliation")
+    reference_date = st.date_input(
+        "Reference date (UTC)",
+        value=date(2026, 3, 20),
+    )
+    reference_time = st.time_input(
+        "Reference time (UTC)",
+        value=time(12, 0),
+        step=60,
+    )
+    tolerance = st.text_input("Monetary tolerance (EUR)", value="0.01")
+    shipping_hours = st.number_input(
+        "Shipping limit (whole hours)",
+        min_value=1,
+        value=48,
+        step=1,
+    )
+    return_days = st.number_input(
+        "Return-refund limit (whole days)",
+        min_value=1,
+        value=7,
+        step=1,
+    )
+    high_hours = st.text_input(
+        "High shipping delay threshold (whole hours, optional)",
+        value="",
+    )
+    st.caption(
+        f"Configuration shown in UTC: {reference_date.isoformat()} "
+        f"{reference_time.isoformat(timespec='minutes')}; tolerance {tolerance} EUR; "
+        f"shipping {shipping_hours} hours; return-refund {return_days} days."
+    )
+    validation = st.session_state.validation_result
+    ready = validation is not None and validation.report.reconciliation_ready
+    if st.button("Run reconciliation", disabled=not ready, type="primary"):
+        try:
+            config = build_reconciliation_config(
+                tolerance,
+                int(shipping_hours),
+                int(return_days),
+                high_hours,
+            )
+            st.session_state.reconciliation_result = reconcile_validation_result(
+                validation,
+                reference_date,
+                reference_time,
+                config,
+            )
+        except (TypeError, ValueError) as error:
+            st.error(f"Reconciliation could not run: {error}")
+        else:
+            st.success("Reconciliation completed successfully.")
 
 
 def render_app() -> None:
@@ -54,6 +181,20 @@ def render_app() -> None:
         st.error("Unexpected filenames: " + ", ".join(selection.unexpected))
     if uploads and selection.is_complete:
         st.success("All five required CSV files are ready for validation.")
+        signature = upload_signature(uploads)
+        if st.session_state.upload_signature != signature:
+            st.session_state.upload_signature = signature
+            st.session_state.validation_result = None
+            st.session_state.reconciliation_result = None
+        if st.button("Validate dataset"):
+            try:
+                st.session_state.validation_result = validate_uploads(uploads)
+                st.session_state.reconciliation_result = None
+            except (OSError, TypeError, ValueError) as error:
+                st.error(f"Dataset validation could not run: {error}")
+
+    _render_validation_report()
+    _render_reconciliation_controls()
 
 
 __all__ = ["SUBTITLE", "TITLE", "render_app"]

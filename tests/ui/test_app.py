@@ -8,6 +8,25 @@ from streamlit.testing.v1 import AppTest
 
 
 PROJECT_ROOT = Path(__file__).parents[2]
+SAMPLE_ROOT = PROJECT_ROOT / "data" / "sample"
+
+
+def _uploads(relative: str) -> list[tuple[str, bytes, str]]:
+    directory = SAMPLE_ROOT / relative
+    return [
+        (filename, (directory / filename).read_bytes(), "text/csv")
+        for filename in (
+            "orders.csv",
+            "payments.csv",
+            "shipments.csv",
+            "returns.csv",
+            "refunds.csv",
+        )
+    ]
+
+
+def _button(app: AppTest, label: str):
+    return next(button for button in app.button if button.label == label)
 
 
 def test_app_starts_and_shows_upload_guidance() -> None:
@@ -22,3 +41,31 @@ def test_app_starts_and_shows_upload_guidance() -> None:
     assert any("synthetic or explicitly authorized" in info.value for info in app.info)
     assert len(app.file_uploader) == 1
     assert any("Missing files:" in warning.value for warning in app.warning)
+    assert _button(app, "Run reconciliation").disabled
+
+
+def test_valid_upload_validation_and_reconciliation_path() -> None:
+    app = AppTest.from_file(str(PROJECT_ROOT / "app.py")).run(timeout=10)
+    app.file_uploader[0].set_value(
+        _uploads("scenarios/rec-02-paid-not-shipped-on-time")
+    ).run(timeout=10)
+
+    assert _button(app, "Run reconciliation").disabled
+    _button(app, "Validate dataset").click().run(timeout=10)
+    assert any("Ready for reconciliation" in item.value for item in app.success)
+    assert not _button(app, "Run reconciliation").disabled
+
+    _button(app, "Run reconciliation").click().run(timeout=10)
+    assert any("Reconciliation completed successfully" in item.value for item in app.success)
+    assert app.session_state["reconciliation_result"].anomalies[0].rule_code.value == "REC-02"
+
+
+def test_invalid_dataset_keeps_reconciliation_disabled() -> None:
+    app = AppTest.from_file(str(PROJECT_ROOT / "app.py")).run(timeout=10)
+    app.file_uploader[0].set_value(
+        _uploads("invalid/invalid-datetime")
+    ).run(timeout=10)
+    _button(app, "Validate dataset").click().run(timeout=10)
+
+    assert any("Reconciliation not available" in item.value for item in app.error)
+    assert _button(app, "Run reconciliation").disabled

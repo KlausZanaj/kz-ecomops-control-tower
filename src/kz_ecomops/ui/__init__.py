@@ -7,6 +7,12 @@ from .uploads import (
     inspect_uploads,
     stage_uploads,
 )
+from .workflow import (
+    build_reconciliation_config,
+    reconcile_validation_result,
+    upload_signature,
+    validate_uploads,
+)
 
 __all__ = [
     "REQUIRED_FILENAMES",
@@ -14,4 +20,8 @@ __all__ = [
     "UploadSelectionError",
     "inspect_uploads",
     "stage_uploads",
+    "build_reconciliation_config",
+    "reconcile_validation_result",
+    "upload_signature",
+    "validate_uploads",
 ]
