@@ -39,11 +39,11 @@ The current data pipeline includes:
 - explicit `RuleNotEvaluated` results when a reliable conclusion cannot be reached;
 - idempotent SQLite anomaly persistence with first/last detection timestamps and a review status that can be updated without changing source data.
 
-Structural, value, integrity, and blocking uniqueness errors prevent the dataset from being marked ready for reconciliation. Relationship findings do not reject rows or block readiness: they remain attached to the report for the future `REC-10` reconciliation rule.
+Structural, value, integrity, and blocking uniqueness errors prevent the dataset from being marked ready for reconciliation. Relationship findings do not reject rows or block readiness: they remain attached to the report and are evaluated by `REC-10`.
 
-Required shipment dates remain subject to status-dependent integrity checks. A shipped or delivered record without a tracking number is preserved for the future `REC-05` rule and does not block reconciliation readiness.
+Required shipment dates remain subject to status-dependent integrity checks. A shipped or delivered record without a tracking number is preserved for `REC-05` and does not block reconciliation readiness.
 
-The pipeline never rewrites source CSV files, removes records, or converts monetary values to floating point. SQLite deliberately omits blocking cross-file foreign keys so orphan records remain available for the future `REC-10` rule.
+The pipeline never rewrites source CSV files, removes records, or converts monetary values to floating point. SQLite deliberately omits blocking cross-file foreign keys so orphan records remain available to `REC-10`.
 
 ## Required MVP data files
 
@@ -67,7 +67,7 @@ data/sample/
 ├── scenarios/              # one five-CSV dataset for each REC-01–REC-10 case
 ├── invalid/                # read, value, integrity, and uniqueness failures
 ├── sources/                # simulated exports for the four platforms
-├── manifest.json           # expected validation and future REC outcomes
+├── manifest.json           # expected validation and REC outcomes
 └── README.md
 ```
 
@@ -226,6 +226,7 @@ From the project root, run the complete automated suite with the virtual environ
 ```powershell
 .\.venv\Scripts\python.exe -m pytest -q
 .\.venv\Scripts\python.exe -m pip check
+.\.venv\Scripts\python.exe -m scripts.audit_repository
 ```
 
 ### macOS and Linux
@@ -233,7 +234,13 @@ From the project root, run the complete automated suite with the virtual environ
 ```bash
 ./.venv/bin/python -m pytest -q
 ./.venv/bin/python -m pip check
+./.venv/bin/python -m scripts.audit_repository
 ```
+
+The repository audit scans current tracked files and Git history. Its narrow
+allowlist covers the project author, the GitHub noreply address, declared
+synthetic CSV files under `data/sample/`, and authorized PNG screenshots under
+`docs/assets/`; secret patterns are still checked inside allowlisted files.
 
 ## Documentation
 

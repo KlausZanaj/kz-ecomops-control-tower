@@ -39,7 +39,7 @@ class CsvRelationshipFinding:
 
 @dataclass(frozen=True, slots=True)
 class CsvRelationshipValidationResult:
-    """Contain non-blocking findings intended for future reconciliation rules."""
+    """Contain non-blocking findings consumed by reconciliation rules."""
 
     findings: tuple[CsvRelationshipFinding, ...] = ()
 

@@ -139,7 +139,7 @@ def _render_validation_report() -> None:
     else:
         st.success("No blocking validation problems were found.")
     if relationships:
-        st.warning("Non-blocking relationship findings will be evaluated by REC-10.")
+        st.warning("Non-blocking relationship findings are evaluated by REC-10.")
         st.dataframe(
             _message_rows(relationships),
             hide_index=True,

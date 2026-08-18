@@ -1,7 +1,7 @@
 """Transactional idempotent SQLite storage for validated canonical datasets.
 
 Cross-file foreign keys are intentionally omitted so non-blocking orphan records
-remain available to the future REC-10 reconciliation rule.
+remain available to the REC-10 reconciliation rule.
 """
 
 from __future__ import annotations
