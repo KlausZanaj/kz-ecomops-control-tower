@@ -13,7 +13,7 @@ the slowest execution took **8.125 seconds**.
 | Item | Measured value |
 | --- | --- |
 | Date | 2026-08-18 |
-| Source revision | Phase 8 performance commit based on `4812b85d41d637d497a68c8029c526b4dfed5dd9` |
+| Source revision | `9908757` (`perf: verify 100k-row reconciliation target`) |
 | Operating system | Windows 11, build 26200, 64 bit |
 | Python | CPython 3.13.15, 64 bit |
 | Processor | AMD64 Family 25 Model 33 |

@@ -2,8 +2,7 @@
 
 This checklist maps every numbered requirement and completion criterion to
 verifiable repository evidence. The allowed status vocabulary is `satisfied`,
-`not applicable`, and `blocked`. Phase 8 is not declared complete until the two
-provisional clean-install/demo rows are changed from `blocked` after Checkpoint 4.
+`not applicable`, and `blocked`.
 
 ## Functional requirements
 
@@ -51,7 +50,7 @@ provisional clean-install/demo rows are changed from `blocked` after Checkpoint 
 | RNF-07 | satisfied | Readers, validators, rules and reporting do not mutate source CSV/DataFrames. | mutation tests across validation/reconciliation/reporting | [Architecture](ARCHITECTURE.md) |
 | RNF-08 | satisfied | Deterministic synthetic-only public data and real-data audit. | sample manifest check; repository/history audit PASS | `data/sample/README.md` |
 | RNF-09 | satisfied | No credential flow; secret patterns audited and redacted. | `tests/audit/`; complete audit PASS | README data policy |
-| RNF-10 | blocked | Portable `pathlib`, standard venv and OS-specific commands are present. | Final external clean-install/headless proof pending Checkpoint 4. | README setup |
+| RNF-10 | satisfied | Portable `pathlib`, standard venv and OS-specific commands are present. | External Windows clean install plus headless HTTP 200; platform-neutral automated suites. | README setup |
 | RNF-11 | satisfied | Python range and exact runtime/dev dependencies in `pyproject.toml`. | `pip check`; editable install in current environment | README setup |
 | RNF-12 | satisfied | Rule code plus current source file, row and record identifiers. | domain, engine, storage reorder and export-reference tests | [Architecture](ARCHITECTURE.md) |
 | RNF-13 | satisfied | Structured codes and actionable file/row/column messages. | reader/value/integrity/dataset error tests | [Architecture](ARCHITECTURE.md) |
@@ -91,8 +90,8 @@ provisional clean-install/demo rows are changed from `blocked` after Checkpoint 
 
 | Criterion | Status | Implementation | Test or proof | Reference / exclusion |
 | --- | --- | --- | --- | --- |
-| 6.3-1 Prepare environment | blocked | Copyable Windows/macOS/Linux commands documented. | External clean-install proof pending Checkpoint 4. | README setup |
-| 6.3-2 Start application | blocked | Module-based Streamlit command documented. | Clean-environment HTTP 200 pending Checkpoint 4. | README running section |
+| 6.3-1 Prepare environment | satisfied | Copyable Windows/macOS/Linux commands documented. | Fresh external Python 3.13 venv and `pip install -e ".[dev]"` succeeded on 2026-08-18. | README setup |
+| 6.3-2 Start application | satisfied | Module-based Streamlit command documented. | Streamlit 1.60.0 returned HTTP 200 in the fresh environment; process stopped and port released. | README running section |
 | 6.3-3 Load demonstration files | satisfied | Exact permanent sample directories and five-file uploader. | UI upload and AppTest workflow tests | [Demo guide](DEMO_GUIDE.md) |
 | 6.3-4 Run reconciliation | satisfied | Validation gate and explicit run control. | UI workflow and AppTest reconciliation tests | [Demo guide](DEMO_GUIDE.md) |
 | 6.3-5 Understand an anomaly | satisfied | Plain description/action, rule, compared values and references. | presentation tests; REC-05 walkthrough | [Demo guide](DEMO_GUIDE.md) |
@@ -101,6 +100,6 @@ provisional clean-install/demo rows are changed from `blocked` after Checkpoint 
 
 ## Current totals
 
-- Satisfied: 66
+- Satisfied: 69
 - Not applicable: 0
-- Blocked pending Checkpoint 4: 3 (`RNF-10`, `6.3-1`, `6.3-2`)
+- Blocked: 0

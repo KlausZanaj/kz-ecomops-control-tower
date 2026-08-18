@@ -4,9 +4,9 @@ Multi-channel order reconciliation and e-commerce operations analytics.
 
 ## Project status
 
-**Phase 7 complete: operational reporting and filtered CSV export implemented**
+**MVP complete — validation, reconciliation, local review, reporting and quality verification are implemented**
 
-The project now provides deterministic synthetic datasets, documented simulated exports for four platforms, canonical normalization, complete five-file validation, all ten reconciliation rules, explainable anomaly results, idempotent local SQLite persistence, an accessible Streamlit workflow, operational anomaly distributions, and spreadsheet-safe filtered CSV export. Phase 8 remains the final testing, performance, and documentation block before the MVP is declared complete.
+The completed MVP provides deterministic synthetic datasets, documented simulated exports for four platforms, canonical normalization, complete five-file validation, all ten reconciliation rules, explainable anomaly results, idempotent local SQLite persistence, an accessible Streamlit workflow, operational anomaly distributions, and spreadsheet-safe filtered CSV export. A clean Python 3.13 installation, the full automated suite, repository/history audit, headless Streamlit start, and the measured 100,000-row target have all been verified.
 
 ## The problem
 
@@ -14,7 +14,7 @@ E-commerce operations often span multiple sales channels and systems. Orders, pa
 
 ## Project objective
 
-KZ EcomOps Control Tower aims to normalize synthetic multi-channel data into a common model and identify operational or financial inconsistencies. The first MVP module will focus exclusively on order reconciliation.
+KZ EcomOps Control Tower normalizes synthetic multi-channel data into a common model and identifies operational or financial inconsistencies. This MVP focuses exclusively on order reconciliation.
 
 ## Implemented data pipeline
 
@@ -171,11 +171,8 @@ Money is always compared with `Decimal` and only within the same currency. A dif
 - pytest 9.1.1
 - SQLite through Python's standard-library `sqlite3` module
 
-### Planned for future phases
-
-- Plotly
-
-Additional technologies will be considered only after the MVP works and a clear need has been identified.
+No service, container, external database, credential, or network connection is
+required during normal local use.
 
 ## Local setup
 
@@ -215,7 +212,15 @@ From the project root, start Streamlit with the virtual-environment interpreter.
 
 The browser interface can be used without further terminal commands. For a ready demonstration, upload the five files from `data/sample/normalized/valid/` or one complete directory under `data/sample/scenarios/`. Intentionally invalid examples under `data/sample/invalid/` demonstrate blocking reports.
 
-Current MVP limits remain explicit: no real platform integrations, authentication, cloud deployment, or item-level partial-order reconciliation. Final performance checks and documentation review remain scheduled for Phase 8.
+## Quick demo
+
+1. Start Streamlit from the repository root.
+2. Upload the five files from `data/sample/normalized/valid/`, validate them and run reconciliation to demonstrate a real zero-anomaly result.
+3. Refresh, then upload the five files from `data/sample/scenarios/rec-05-shipment-without-tracking/`.
+4. Validate, run reconciliation, inspect the REC-05 anomaly, apply filters, update its review status and download the filtered CSV.
+
+The complete timed walkthrough and safe runtime reset are documented in the
+[interview demo guide](docs/DEMO_GUIDE.md).
 
 ## Running the tests
 
@@ -227,6 +232,7 @@ From the project root, run the complete automated suite with the virtual environ
 .\.venv\Scripts\python.exe -m pytest -q
 .\.venv\Scripts\python.exe -m pip check
 .\.venv\Scripts\python.exe -m scripts.audit_repository
+.\.venv\Scripts\python.exe -m kz_ecomops.sample_data data/sample --check
 ```
 
 ### macOS and Linux
@@ -235,6 +241,7 @@ From the project root, run the complete automated suite with the virtual environ
 ./.venv/bin/python -m pytest -q
 ./.venv/bin/python -m pip check
 ./.venv/bin/python -m scripts.audit_repository
+./.venv/bin/python -m kz_ecomops.sample_data data/sample --check
 ```
 
 The repository audit scans current tracked files and Git history. Its narrow
@@ -242,16 +249,97 @@ allowlist covers the project author, the GitHub noreply address, declared
 synthetic CSV files under `data/sample/`, and authorized PNG screenshots under
 `docs/assets/`; secret patterns are still checked inside allowlisted files.
 
+The final verified suite contains **550 tests**. A fresh external Python 3.13.15
+environment installed the project with `pip install -e ".[dev]"`, passed all 550
+tests and `pip check`, confirmed the deterministic samples, and served Streamlit
+1.60.0 with HTTP 200 before the process was stopped and its port released.
+
+## Measured performance
+
+The deterministic benchmark generates exactly 100,000 temporary EUR records,
+runs one excluded warm-up and measures three complete validation/reconciliation
+executions. The recorded pipeline totals were **8.055 s**, **8.087 s**, and
+**8.125 s** (minimum/median/maximum), satisfying the less-than-30-second RNF-06
+target. Generation is measured separately and temporary data is removed
+automatically. See [Performance verification](docs/PERFORMANCE.md) for the
+environment, stage timings and reproducible commands.
+
+## Repository structure
+
+```text
+data/sample/              Deterministic public synthetic data
+docs/                     Requirements, architecture, demo and evidence
+scripts/                  Benchmark and repository audit tools
+src/kz_ecomops/
+  normalization/          Simulated platform exports to canonical data
+  validation/             Safe five-file validation and relationship findings
+  reconciliation/         Immutable domain and REC-01 through REC-10
+  storage/                Idempotent transactional SQLite persistence
+  reporting/              Distributions and in-memory CSV export
+  ui/                     Thin Streamlit workflow and presentation
+tests/                    Unit, integration, UI, benchmark and audit tests
+app.py                    Streamlit entry point
+pyproject.toml            Package metadata and pinned direct dependencies
+```
+
+## Architecture
+
+The complete flow is upload → temporary staging → validation → reconciliation →
+SQLite → review/reporting → in-memory CSV download. Business rules do not depend
+on Streamlit, monetary calculations use `Decimal`, time rules use an explicit
+reference, and stable anomaly identity is independent of row order. See the
+[architecture guide](docs/ARCHITECTURE.md) for package boundaries, validation
+stages, rule design, idempotency and trade-offs.
+
+## Interface screenshots
+
+No screenshots are committed in this revision. The installed browser-control
+runtime was blocked by the Windows execution sandbox before it could open the
+local app, and Playwright or Selenium were not already available. No dependency
+was added and no mockup was substituted for a real capture. The UI remains
+verified by Streamlit AppTest coverage and HTTP 200 headless starts in both the
+project and clean environments; the [demo guide](docs/DEMO_GUIDE.md) reproduces
+each intended screen with permanent synthetic samples.
+
+## Known limits
+
+- manual canonical CSV upload; no live or scheduled platform integration;
+- EUR only, with no currency conversion;
+- order-total reconciliation for partial shipment, return and refund cases;
+- local single-user SQLite; no authentication, roles or shared cloud service;
+- no full KPI dashboard, inventory optimization or item-level analysis;
+- explicit reference time selected by the user rather than an implicit clock;
+- human review is required before operational or financial action.
+
+## Troubleshooting
+
+- **`python` or `py` is not found:** install standard 64-bit CPython 3.13 from
+  python.org, then close and reopen the terminal so Windows refreshes PATH.
+- **The virtual environment is missing:** recreate `.venv` with the command in
+  Local setup; do not commit it.
+- **The app reports missing or duplicate files:** upload exactly one file with
+  each required canonical filename.
+- **Reconciliation is unavailable:** correct every blocking validation message;
+  relationship findings are non-blocking and are evaluated by REC-10.
+- **Port 8501 is already in use:** stop the previous Streamlit process or pass a
+  different local port with `--server.port`.
+- **A clean demo needs empty review state:** close Streamlit and follow the exact,
+  non-recursive database reset procedure in `docs/DEMO_GUIDE.md`.
+
 ## Documentation
 
 - [Project overview](docs/PROJECT_OVERVIEW.md)
 - [Requirements](docs/REQUIREMENTS.md)
 - [Data dictionary](docs/DATA_DICTIONARY.md)
 - [MVP roadmap](docs/MVP_ROADMAP.md)
+- [Architecture](docs/ARCHITECTURE.md)
+- [Interview demo guide](docs/DEMO_GUIDE.md)
+- [Completion checklist](docs/COMPLETION_CHECKLIST.md)
+- [Performance verification](docs/PERFORMANCE.md)
 
 ## Data policy
 
-All data included in this public project will be entirely synthetic. Real customer, company, transaction, credential, token, or API data must not be committed to the repository.
+All data included in this public project is entirely synthetic. Real customer, company, transaction, credential, token, or API data must not be committed to the repository.
 
 ## Roadmap
 
@@ -263,14 +351,14 @@ All data included in this public project will be entirely synthetic. Real custom
 6. Order reconciliation engine — completed.
 7. Streamlit user interface — completed.
 8. CSV exports and operational reporting — completed in Phase 7.
-9. Final testing, performance checks, and documentation — planned as Phase 8, the last MVP block.
+9. Final testing, performance checks, audit, clean installation and documentation — completed in Phase 8.
 
 KPI analytics, inventory optimization, real platform APIs, authentication, and cloud deployment are planned only for future versions.
 
 ## License
 
-This project is intended to be released under the [MIT License](LICENSE).
+This project is released under the [MIT License](LICENSE).
 
 ## Introduzione in italiano
 
-KZ EcomOps Control Tower è un progetto dimostrativo per il controllo operativo di un e-commerce multicanale. Sono ora disponibili dati interamente sintetici, validazione, normalizzazione, tutte le regole `REC-01`–`REC-10`, persistenza SQLite idempotente, un'interfaccia Streamlit completa, distribuzioni operative ed esportazione CSV filtrata. La Fase 8 rimane l'ultimo blocco di test, prestazioni e revisione documentale prima del completamento dell'MVP.
+KZ EcomOps Control Tower è un MVP completo e riproducibile per il controllo operativo di un e-commerce multicanale. Include dati interamente sintetici, validazione, normalizzazione, tutte le regole `REC-01`–`REC-10`, persistenza SQLite idempotente, interfaccia Streamlit, distribuzioni operative ed esportazione CSV filtrata. Test, audit, installazione pulita e benchmark da 100.000 righe sono stati verificati e documentati; KPI avanzati e ottimizzazione dell'inventario restano sviluppi futuri.
