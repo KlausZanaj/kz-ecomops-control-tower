@@ -167,10 +167,6 @@ def _validate_preconditions(
                 )
 
 
-def _value(dataframe: pd.DataFrame, row_position: int, column: str) -> str:
-    return dataframe.iloc[row_position, dataframe.columns.get_loc(column)]
-
-
 def _is_empty(value: str) -> bool:
     return not value.strip()
 
@@ -199,28 +195,35 @@ def validate_csv_relationships(
     )
 
     orders = dataframes["orders.csv"]
+    order_positions = {
+        str(column): position for position, column in enumerate(orders.columns)
+    }
     order_lookup = {
-        _value(orders, position, "order_id"): (
-            _value(orders, position, "platform"),
-            _value(orders, position, "source_order_id"),
+        row[order_positions["order_id"]]: (
+            row[order_positions["platform"]],
+            row[order_positions["source_order_id"]],
         )
-        for position in range(len(orders))
+        for row in orders.itertuples(index=False, name=None)
     }
 
     returns = dataframes["returns.csv"]
+    return_positions = {
+        str(column): position for position, column in enumerate(returns.columns)
+    }
     return_lookup = {
-        _value(returns, position, "return_id"): _value(
-            returns, position, "order_id"
-        )
-        for position in range(len(returns))
+        row[return_positions["return_id"]]: row[return_positions["order_id"]]
+        for row in returns.itertuples(index=False, name=None)
     }
 
     payments = dataframes["payments.csv"]
+    payment_positions = {
+        str(column): position for position, column in enumerate(payments.columns)
+    }
     payment_lookup: dict[str, list[str]] = {}
-    for position in range(len(payments)):
-        payment_lookup.setdefault(
-            _value(payments, position, "payment_id"), []
-        ).append(_value(payments, position, "order_id"))
+    for row in payments.itertuples(index=False, name=None):
+        payment_lookup.setdefault(row[payment_positions["payment_id"]], []).append(
+            row[payment_positions["order_id"]]
+        )
 
     findings: list[CsvRelationshipFinding] = []
     linked_filenames = (
@@ -231,9 +234,14 @@ def validate_csv_relationships(
     )
     for filename in linked_filenames:
         dataframe = dataframes[filename]
-        for row_position in range(len(dataframe)):
-            row_number = row_position + 1
-            order_id = _value(dataframe, row_position, "order_id")
+        positions = {
+            str(column): position for position, column in enumerate(dataframe.columns)
+        }
+        for row_number, row in enumerate(
+            dataframe.itertuples(index=False, name=None),
+            start=1,
+        ):
+            order_id = row[positions["order_id"]]
             order_details = order_lookup.get(order_id)
             if order_details is None:
                 findings.append(
@@ -247,10 +255,8 @@ def validate_csv_relationships(
                     )
                 )
             else:
-                platform = _value(dataframe, row_position, "platform")
-                source_order_id = _value(
-                    dataframe, row_position, "source_order_id"
-                )
+                platform = row[positions["platform"]]
+                source_order_id = row[positions["source_order_id"]]
                 if order_details != (platform, source_order_id):
                     findings.append(
                         _finding(
@@ -266,7 +272,7 @@ def validate_csv_relationships(
             if filename != "refunds.csv":
                 continue
 
-            return_id = _value(dataframe, row_position, "return_id") if "return_id" in dataframe.columns else ""
+            return_id = row[positions["return_id"]] if "return_id" in positions else ""
             if not _is_empty(return_id):
                 related_order_id = return_lookup.get(return_id)
                 if related_order_id is None:
@@ -292,7 +298,9 @@ def validate_csv_relationships(
                         )
                     )
 
-            payment_id = _value(dataframe, row_position, "payment_id") if "payment_id" in dataframe.columns else ""
+            payment_id = (
+                row[positions["payment_id"]] if "payment_id" in positions else ""
+            )
             if not _is_empty(payment_id):
                 related_order_ids = payment_lookup.get(payment_id)
                 if related_order_ids is None:

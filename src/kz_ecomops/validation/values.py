@@ -313,10 +313,12 @@ def validate_csv_values(
     }
     issues: list[CsvValueIssue] = []
 
-    for row_position in range(len(dataframe)):
+    for row_position, row in enumerate(
+        dataframe.itertuples(index=False, name=None)
+    ):
         row_number = row_position + 1
         for column in columns_to_validate:
-            value = dataframe.iloc[row_position, column_positions[column.name]]
+            value = row[column_positions[column.name]]
             issue = _validate_cell(value, schema, row_number, column)
             if issue is not None:
                 issues.append(issue)

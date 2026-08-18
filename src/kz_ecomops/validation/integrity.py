@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass
 from decimal import Decimal
 from enum import StrEnum
@@ -98,26 +99,24 @@ def _issue(
     )
 
 
-def _is_missing(dataframe: pd.DataFrame, row_position: int, column: str) -> bool:
-    if column not in dataframe.columns:
+def _is_missing(row: Mapping[str, str], column: str) -> bool:
+    if column not in row:
         return True
-    value = dataframe.iloc[row_position, dataframe.columns.get_loc(column)]
-    return not value.strip()
+    return not row[column].strip()
 
 
-def _value(dataframe: pd.DataFrame, row_position: int, column: str) -> str:
-    return dataframe.iloc[row_position, dataframe.columns.get_loc(column)]
+def _value(row: Mapping[str, str], column: str) -> str:
+    return row[column]
 
 
 def _order_id_issue(
-    dataframe: pd.DataFrame,
+    row: Mapping[str, str],
     schema: CsvSchema,
-    row_position: int,
     row_number: int,
 ) -> CsvIntegrityIssue | None:
-    order_id = _value(dataframe, row_position, "order_id")
-    platform = _value(dataframe, row_position, "platform")
-    source_order_id = _value(dataframe, row_position, "source_order_id")
+    order_id = _value(row, "order_id")
+    platform = _value(row, "platform")
+    source_order_id = _value(row, "source_order_id")
     if order_id == f"{platform}:{source_order_id}":
         return None
 
@@ -134,16 +133,15 @@ def _order_id_issue(
 
 
 def _order_total_issue(
-    dataframe: pd.DataFrame,
+    row: Mapping[str, str],
     schema: CsvSchema,
-    row_position: int,
     row_number: int,
 ) -> CsvIntegrityIssue | None:
-    subtotal = Decimal(_value(dataframe, row_position, "subtotal"))
-    discount_total = Decimal(_value(dataframe, row_position, "discount_total"))
-    shipping_total = Decimal(_value(dataframe, row_position, "shipping_total"))
-    tax_total = Decimal(_value(dataframe, row_position, "tax_total"))
-    order_total = Decimal(_value(dataframe, row_position, "order_total"))
+    subtotal = Decimal(_value(row, "subtotal"))
+    discount_total = Decimal(_value(row, "discount_total"))
+    shipping_total = Decimal(_value(row, "shipping_total"))
+    tax_total = Decimal(_value(row, "tax_total"))
+    order_total = Decimal(_value(row, "order_total"))
     calculated_total = subtotal - discount_total + shipping_total + tax_total
 
     if abs(calculated_total - order_total) <= DEFAULT_MONETARY_TOLERANCE:
@@ -168,14 +166,13 @@ def _order_total_issue(
 
 
 def _payment_issues(
-    dataframe: pd.DataFrame,
+    row: Mapping[str, str],
     schema: CsvSchema,
-    row_position: int,
     row_number: int,
 ) -> tuple[CsvIntegrityIssue, ...]:
-    if _value(dataframe, row_position, "payment_status") != "succeeded":
+    if _value(row, "payment_status") != "succeeded":
         return ()
-    if not _is_missing(dataframe, row_position, "paid_at"):
+    if not _is_missing(row, "paid_at"):
         return ()
     return (
         _issue(
@@ -189,17 +186,16 @@ def _payment_issues(
 
 
 def _shipment_issues(
-    dataframe: pd.DataFrame,
+    row: Mapping[str, str],
     schema: CsvSchema,
-    row_position: int,
     row_number: int,
 ) -> tuple[CsvIntegrityIssue, ...]:
-    shipment_status = _value(dataframe, row_position, "shipment_status")
+    shipment_status = _value(row, "shipment_status")
     if shipment_status not in {"shipped", "delivered"}:
         return ()
 
     issues: list[CsvIntegrityIssue] = []
-    if _is_missing(dataframe, row_position, "shipped_at"):
+    if _is_missing(row, "shipped_at"):
         issues.append(
             _issue(
                 CsvIntegrityErrorCode.MISSING_SHIPPED_AT,
@@ -209,9 +205,7 @@ def _shipment_issues(
                 "a shipped or delivered shipment requires shipped_at.",
             )
         )
-    if shipment_status == "delivered" and _is_missing(
-        dataframe, row_position, "delivered_at"
-    ):
+    if shipment_status == "delivered" and _is_missing(row, "delivered_at"):
         issues.append(
             _issue(
                 CsvIntegrityErrorCode.MISSING_DELIVERED_AT,
@@ -225,16 +219,13 @@ def _shipment_issues(
 
 
 def _return_issues(
-    dataframe: pd.DataFrame,
+    row: Mapping[str, str],
     schema: CsvSchema,
-    row_position: int,
     row_number: int,
 ) -> tuple[CsvIntegrityIssue, ...]:
     issues: list[CsvIntegrityIssue] = []
-    return_status = _value(dataframe, row_position, "return_status")
-    if return_status in {"received", "completed"} and _is_missing(
-        dataframe, row_position, "received_at"
-    ):
+    return_status = _value(row, "return_status")
+    if return_status in {"received", "completed"} and _is_missing(row, "received_at"):
         issues.append(
             _issue(
                 CsvIntegrityErrorCode.MISSING_RECEIVED_AT,
@@ -245,9 +236,7 @@ def _return_issues(
             )
         )
 
-    if not _is_missing(
-        dataframe, row_position, "expected_refund_amount"
-    ) and _is_missing(dataframe, row_position, "currency"):
+    if not _is_missing(row, "expected_refund_amount") and _is_missing(row, "currency"):
         issues.append(
             _issue(
                 CsvIntegrityErrorCode.MISSING_RETURN_CURRENCY,
@@ -262,14 +251,13 @@ def _return_issues(
 
 
 def _refund_issues(
-    dataframe: pd.DataFrame,
+    row: Mapping[str, str],
     schema: CsvSchema,
-    row_position: int,
     row_number: int,
 ) -> tuple[CsvIntegrityIssue, ...]:
-    if _value(dataframe, row_position, "refund_status") != "succeeded":
+    if _value(row, "refund_status") != "succeeded":
         return ()
-    if not _is_missing(dataframe, row_position, "refunded_at"):
+    if not _is_missing(row, "refunded_at"):
         return ()
     return (
         _issue(
@@ -325,33 +313,29 @@ def validate_csv_integrity(
     _validate_preconditions(dataframe, schema, value_result)
 
     issues: list[CsvIntegrityIssue] = []
-    for row_position in range(len(dataframe)):
-        row_number = row_position + 1
+    column_names = tuple(str(column) for column in dataframe.columns)
+    for row_number, values in enumerate(
+        dataframe.itertuples(index=False, name=None),
+        start=1,
+    ):
+        row = dict(zip(column_names, values, strict=True))
 
-        order_id_issue = _order_id_issue(
-            dataframe, schema, row_position, row_number
-        )
+        order_id_issue = _order_id_issue(row, schema, row_number)
         if order_id_issue is not None:
             issues.append(order_id_issue)
 
         if schema.filename == "orders.csv":
-            order_total_issue = _order_total_issue(
-                dataframe, schema, row_position, row_number
-            )
+            order_total_issue = _order_total_issue(row, schema, row_number)
             if order_total_issue is not None:
                 issues.append(order_total_issue)
         elif schema.filename == "payments.csv":
-            issues.extend(
-                _payment_issues(dataframe, schema, row_position, row_number)
-            )
+            issues.extend(_payment_issues(row, schema, row_number))
         elif schema.filename == "shipments.csv":
-            issues.extend(
-                _shipment_issues(dataframe, schema, row_position, row_number)
-            )
+            issues.extend(_shipment_issues(row, schema, row_number))
         elif schema.filename == "returns.csv":
-            issues.extend(_return_issues(dataframe, schema, row_position, row_number))
+            issues.extend(_return_issues(row, schema, row_number))
         elif schema.filename == "refunds.csv":
-            issues.extend(_refund_issues(dataframe, schema, row_position, row_number))
+            issues.extend(_refund_issues(row, schema, row_number))
 
     return CsvIntegrityValidationResult(
         schema=schema,

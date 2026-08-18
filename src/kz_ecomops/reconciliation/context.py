@@ -93,12 +93,12 @@ class ReconciliationContext:
             if not isinstance(dataframe, pd.DataFrame):
                 raise TypeError(f"dataframes[{filename!r}] must be a pandas DataFrame.")
             records: list[IndexedRecord] = []
-            for row_position in range(len(dataframe)):
-                row_number = row_position + 1
-                values = {
-                    str(column): dataframe.iloc[row_position, column_position]
-                    for column_position, column in enumerate(dataframe.columns)
-                }
+            column_names = tuple(str(column) for column in dataframe.columns)
+            for row_number, row_values in enumerate(
+                dataframe.itertuples(index=False, name=None),
+                start=1,
+            ):
+                values = dict(zip(column_names, row_values, strict=True))
                 if any(not isinstance(value, str) for value in values.values()):
                     raise TypeError("Canonical reconciliation values must remain strings.")
                 record = IndexedRecord(
