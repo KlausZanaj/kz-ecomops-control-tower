@@ -92,6 +92,11 @@ def test_app_starts_and_shows_upload_guidance() -> None:
         for caption in app.caption
     )
     assert any("synthetic or explicitly authorized" in info.value for info in app.info)
+    assert any(
+        "`.runtime/kz-ecomops-control-tower.sqlite3`" in caption.value
+        for caption in app.caption
+    )
+    assert not any("Users" in caption.value for caption in app.caption)
     assert len(app.file_uploader) == 1
     assert any("Missing files:" in warning.value for warning in app.warning)
     assert _button(app, "Run reconciliation").disabled

@@ -36,6 +36,7 @@ from .workflow import (
     validate_uploads,
 )
 from .storage import (
+    DEFAULT_RUNTIME_DATABASE,
     change_review_status,
     persist_and_refresh,
     runtime_database_path,
@@ -506,7 +507,7 @@ def render_app() -> None:
     _render_validation_report()
     st.caption(
         "Local runtime database: "
-        f"`{runtime_database_path().resolve()}`. Uploaded CSV files are not kept."
+        f"`{DEFAULT_RUNTIME_DATABASE.as_posix()}`. Uploaded CSV files are not kept."
     )
     _render_reconciliation_controls(
         selection.is_complete,
