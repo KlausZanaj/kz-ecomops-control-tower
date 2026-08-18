@@ -4,9 +4,9 @@ Multi-channel order reconciliation and e-commerce operations analytics.
 
 ## Project status
 
-**Phase 5 complete: deterministic REC-01–REC-10 reconciliation implemented**
+**Phase 6 complete: Streamlit reconciliation and review interface implemented**
 
-The project now provides deterministic synthetic datasets, documented simulated exports for four platforms, canonical normalization, complete five-file validation, all ten reconciliation rules, explainable anomaly results, and idempotent local SQLite persistence. The Streamlit interface and final filtered CSV export are not implemented yet.
+The project now provides deterministic synthetic datasets, documented simulated exports for four platforms, canonical normalization, complete five-file validation, all ten reconciliation rules, explainable anomaly results, idempotent local SQLite persistence, and an accessible Streamlit workflow. Filtered CSV export is not implemented yet and remains planned for Phase 7.
 
 ## The problem
 
@@ -85,6 +85,28 @@ The public normalization API can process one simulated platform directory with `
 
 After `validate_dataset_directory()` returns a complete reconciliation-ready result, `persist_validated_dataset()` stores it transactionally in SQLite. `reconcile_dataset()` then runs all ten rules with an explicit reference time and optional `ReconciliationConfig`. `persist_reconciliation_result()` saves anomalies without resetting a manually updated review status. Re-importing identical canonical data or reconciliation results does not multiply records.
 
+## Streamlit application
+
+The Streamlit interface provides the complete non-technical MVP path after the application starts:
+
+1. Upload exactly one copy of `orders.csv`, `payments.csv`, `shipments.csv`, `returns.csv`, and `refunds.csv`.
+2. Validate the dataset and review processed, accepted, and rejected records.
+3. Correct any blocking problems or review non-blocking relationship findings.
+4. Set the explicit UTC reference date and time, monetary tolerance, shipping limit, return-refund limit, and optional high-delay threshold.
+5. Run reconciliation only when validation reports `Ready for reconciliation`.
+6. Review operational indicators, filter anomalies, inspect compared values and record references, and review checks that could not be evaluated.
+7. Change an anomaly review status between `open`, `in_review`, `resolved`, and `dismissed`.
+
+Uploaded CSV files are staged only in an automatically deleted temporary directory. They are never copied into the repository or retained by the application. Use only synthetic or explicitly authorized data; the MVP accepts EUR only.
+
+Validated canonical records and reconciliation anomalies are stored locally in:
+
+```text
+.runtime/kz-ecomops-control-tower.sqlite3
+```
+
+The `.runtime/` directory and all SQLite files are ignored by Git. Reconciliation persistence is idempotent, and a saved review status survives a later reconciliation of the same anomaly.
+
 ## Implemented reconciliation rules
 
 | Rule | Anomaly code | Condition | Severity | Recommended action |
@@ -108,12 +130,12 @@ Money is always compared with `Decimal` and only within the same currency. A dif
 
 - Python 3.13
 - Pandas 3.0.5
+- Streamlit 1.60.0
 - pytest 9.1.1
 - SQLite through Python's standard-library `sqlite3` module
 
 ### Planned for future phases
 
-- Streamlit
 - Plotly
 
 Additional technologies will be considered only after the MVP works and a clear need has been identified.
@@ -137,6 +159,26 @@ python3.13 -m venv .venv
 ```
 
 The `.venv` directory must not be published or committed. It is recreated locally from the dependency information in `pyproject.toml`.
+
+## Running the application
+
+From the project root, start Streamlit with the virtual-environment interpreter.
+
+### Windows
+
+```powershell
+.\.venv\Scripts\python.exe -m streamlit run app.py
+```
+
+### macOS and Linux
+
+```bash
+./.venv/bin/python -m streamlit run app.py
+```
+
+The browser interface can be used without further terminal commands. For a ready demonstration, upload the five files from `data/sample/normalized/valid/` or one complete directory under `data/sample/scenarios/`. Intentionally invalid examples under `data/sample/invalid/` demonstrate blocking reports.
+
+Current MVP limits remain explicit: no real platform integrations, authentication, cloud deployment, item-level partial-order reconciliation, or CSV anomaly export. Filtered CSV export is scheduled for Phase 7.
 
 ## Running the tests
 
@@ -175,8 +217,8 @@ All data included in this public project will be entirely synthetic. Real custom
 4. Synthetic demonstration datasets — completed.
 5. Data normalization and local SQLite storage — completed.
 6. Order reconciliation engine — completed.
-7. Streamlit user interface — next phase.
-8. CSV exports and operational reporting — planned.
+7. Streamlit user interface — completed.
+8. CSV exports and operational reporting — planned for Phase 7.
 9. Testing, performance checks, and final documentation.
 
 KPI analytics, inventory optimization, real platform APIs, authentication, and cloud deployment are planned only for future versions.
@@ -187,4 +229,4 @@ This project is intended to be released under the [MIT License](LICENSE).
 
 ## Introduzione in italiano
 
-KZ EcomOps Control Tower è un progetto dimostrativo per il controllo operativo di un e-commerce multicanale. Sono ora disponibili dati interamente sintetici, validazione, normalizzazione, tutte le regole `REC-01`–`REC-10` e persistenza SQLite idempotente anche per le anomalie. Il prossimo passo è l'interfaccia Streamlit; l'esportazione CSV finale non è ancora implementata.
+KZ EcomOps Control Tower è un progetto dimostrativo per il controllo operativo di un e-commerce multicanale. Sono ora disponibili dati interamente sintetici, validazione, normalizzazione, tutte le regole `REC-01`–`REC-10`, persistenza SQLite idempotente e un'interfaccia Streamlit completa per caricare i cinque CSV, eseguire la riconciliazione e aggiornare lo stato delle anomalie. L'esportazione CSV finale non è ancora implementata ed è prevista nella Fase 7.

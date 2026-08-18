@@ -20,6 +20,12 @@ from .presentation import (
     not_evaluated_rows,
     operational_summary,
 )
+from .storage import (
+    PersistenceOutcome,
+    change_review_status,
+    persist_and_refresh,
+    runtime_database_path,
+)
 
 __all__ = [
     "REQUIRED_FILENAMES",
@@ -36,4 +42,8 @@ __all__ = [
     "filter_anomalies",
     "not_evaluated_rows",
     "operational_summary",
+    "PersistenceOutcome",
+    "change_review_status",
+    "persist_and_refresh",
+    "runtime_database_path",
 ]

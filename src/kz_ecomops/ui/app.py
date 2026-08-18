@@ -6,6 +6,7 @@ from datetime import date, time
 
 import streamlit as st
 
+from kz_ecomops.reconciliation import ReviewStatus
 from kz_ecomops.validation import ValidationMessage, ValidationStage
 
 from .uploads import REQUIRED_FILENAMES, inspect_uploads
@@ -22,6 +23,11 @@ from .workflow import (
     upload_signature,
     validate_uploads,
 )
+from .storage import (
+    change_review_status,
+    persist_and_refresh,
+    runtime_database_path,
+)
 
 
 TITLE = "KZ EcomOps Control Tower"
@@ -33,6 +39,8 @@ def _initialize_state() -> None:
         "validation_result": None,
         "reconciliation_result": None,
         "upload_signature": None,
+        "persistence_outcome": None,
+        "review_notice": None,
     }
     for key, value in defaults.items():
         if key not in st.session_state:
@@ -144,16 +152,23 @@ def _render_reconciliation_controls() -> None:
                 int(return_days),
                 high_hours,
             )
-            st.session_state.reconciliation_result = reconcile_validation_result(
+            result = reconcile_validation_result(
                 validation,
                 reference_date,
                 reference_time,
                 config,
             )
+            outcome = persist_and_refresh(
+                runtime_database_path(),
+                validation,
+                result,
+            )
+            st.session_state.reconciliation_result = outcome.reconciliation_result
+            st.session_state.persistence_outcome = outcome
         except (TypeError, ValueError) as error:
             st.error(f"Reconciliation could not run: {error}")
         else:
-            st.success("Reconciliation completed successfully.")
+            st.success("Reconciliation completed and saved successfully.")
 
 
 def _render_operational_summary() -> None:
@@ -232,6 +247,30 @@ def _render_anomaly_dashboard() -> None:
                 hide_index=True,
                 width="stretch",
             )
+            selected_status = st.selectbox(
+                "Review status",
+                options=tuple(status.value for status in ReviewStatus),
+                index=tuple(ReviewStatus).index(selected.review_status),
+                key=f"review-status-{selected.anomaly_id}",
+            )
+            if st.button(
+                "Save review status",
+                key=f"save-review-{selected.anomaly_id}",
+            ):
+                try:
+                    st.session_state.reconciliation_result = change_review_status(
+                        runtime_database_path(),
+                        result,
+                        selected.anomaly_id,
+                        selected_status,
+                    )
+                except (OSError, TypeError, ValueError, KeyError) as error:
+                    st.error(f"Review status could not be updated: {error}")
+                else:
+                    st.session_state.review_notice = (
+                        f"Review status updated to {selected_status}."
+                    )
+                    st.rerun()
     else:
         st.info("No anomalies match the selected filters.")
 
@@ -251,6 +290,9 @@ def render_app() -> None:
 
     st.title(TITLE)
     st.caption(SUBTITLE)
+    if st.session_state.review_notice:
+        st.success(st.session_state.review_notice)
+        st.session_state.review_notice = None
     st.write(
         "Upload the five canonical CSV files to validate and reconcile one dataset. "
         "No terminal is needed after the application starts."
@@ -280,6 +322,7 @@ def render_app() -> None:
             st.session_state.upload_signature = signature
             st.session_state.validation_result = None
             st.session_state.reconciliation_result = None
+            st.session_state.persistence_outcome = None
         if st.button("Validate dataset"):
             try:
                 st.session_state.validation_result = validate_uploads(uploads)
@@ -288,6 +331,10 @@ def render_app() -> None:
                 st.error(f"Dataset validation could not run: {error}")
 
     _render_validation_report()
+    st.caption(
+        "Local runtime database: "
+        f"`{runtime_database_path().resolve()}`. Uploaded CSV files are not kept."
+    )
     _render_reconciliation_controls()
     _render_operational_summary()
     _render_anomaly_dashboard()
