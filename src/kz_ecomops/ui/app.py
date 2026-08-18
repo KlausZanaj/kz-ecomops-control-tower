@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import date, time
+from datetime import date, datetime, time, timezone
 
 import streamlit as st
 
@@ -16,9 +16,11 @@ from .presentation import (
     filter_anomalies,
     not_evaluated_rows,
     operational_summary,
+    reconciliation_configuration,
 )
 from .workflow import (
     build_reconciliation_config,
+    reconciliation_input_signature,
     reconcile_validation_result,
     upload_signature,
     validate_uploads,
@@ -32,19 +34,48 @@ from .storage import (
 
 TITLE = "KZ EcomOps Control Tower"
 SUBTITLE = "Multi-channel order reconciliation and e-commerce operations analytics."
+_RESULT_WIDGET_KEYS = {
+    "anomaly-code-filter",
+    "anomaly-selection",
+    "platform-filter",
+    "review-status-filter",
+    "severity-filter",
+}
 
 
 def _initialize_state() -> None:
     defaults = {
         "validation_result": None,
         "reconciliation_result": None,
-        "upload_signature": None,
+        "current_upload_signature": None,
+        "validated_upload_signature": None,
+        "reconciliation_signature": None,
         "persistence_outcome": None,
         "review_notice": None,
     }
     for key, value in defaults.items():
         if key not in st.session_state:
             st.session_state[key] = value
+
+
+def _clear_result_widget_state() -> None:
+    for key in tuple(st.session_state):
+        if key in _RESULT_WIDGET_KEYS or key.startswith("review-status-"):
+            del st.session_state[key]
+
+
+def _invalidate_reconciliation_state() -> None:
+    st.session_state.reconciliation_result = None
+    st.session_state.reconciliation_signature = None
+    st.session_state.persistence_outcome = None
+    st.session_state.review_notice = None
+    _clear_result_widget_state()
+
+
+def _invalidate_upload_state() -> None:
+    st.session_state.validation_result = None
+    st.session_state.validated_upload_signature = None
+    _invalidate_reconciliation_state()
 
 
 def _message_rows(messages: tuple[ValidationMessage, ...]) -> list[dict[str, str]]:
@@ -109,7 +140,10 @@ def _render_validation_report() -> None:
         st.error("Reconciliation not available")
 
 
-def _render_reconciliation_controls() -> None:
+def _render_reconciliation_controls(
+    uploads_complete: bool,
+    current_upload_signature: str,
+) -> None:
     st.subheader("2. Configure reconciliation")
     reference_date = st.date_input(
         "Reference date (UTC)",
@@ -142,21 +176,56 @@ def _render_reconciliation_controls() -> None:
         f"{reference_time.isoformat(timespec='minutes')}; tolerance {tolerance} EUR; "
         f"shipping {shipping_hours} hours; return-refund {return_days} days."
     )
+    current_config = None
+    current_reconciliation_signature = None
+    try:
+        current_config = build_reconciliation_config(
+            tolerance,
+            int(shipping_hours),
+            int(return_days),
+            high_hours,
+        )
+        current_reference_at = datetime.combine(
+            reference_date,
+            reference_time,
+            tzinfo=timezone.utc,
+        )
+        current_reconciliation_signature = reconciliation_input_signature(
+            current_reference_at,
+            current_config,
+        )
+    except (TypeError, ValueError):
+        pass
+
+    if (
+        st.session_state.reconciliation_result is not None
+        and st.session_state.reconciliation_signature
+        != current_reconciliation_signature
+    ):
+        _invalidate_reconciliation_state()
+
     validation = st.session_state.validation_result
-    ready = validation is not None and validation.report.reconciliation_ready
+    ready = (
+        uploads_complete
+        and validation is not None
+        and validation.report.reconciliation_ready
+        and st.session_state.validated_upload_signature
+        == current_upload_signature
+    )
     if st.button("Run reconciliation", disabled=not ready, type="primary"):
         try:
-            config = build_reconciliation_config(
-                tolerance,
-                int(shipping_hours),
-                int(return_days),
-                high_hours,
-            )
+            if current_config is None:
+                current_config = build_reconciliation_config(
+                    tolerance,
+                    int(shipping_hours),
+                    int(return_days),
+                    high_hours,
+                )
             result = reconcile_validation_result(
                 validation,
                 reference_date,
                 reference_time,
-                config,
+                current_config,
             )
             outcome = persist_and_refresh(
                 runtime_database_path(),
@@ -165,6 +234,10 @@ def _render_reconciliation_controls() -> None:
             )
             st.session_state.reconciliation_result = outcome.reconciliation_result
             st.session_state.persistence_outcome = outcome
+            st.session_state.reconciliation_signature = reconciliation_input_signature(
+                result.reference_at,
+                result.config,
+            )
         except (TypeError, ValueError) as error:
             st.error(f"Reconciliation could not run: {error}")
         else:
@@ -192,23 +265,30 @@ def _render_anomaly_dashboard() -> None:
         st.info("Anomalies are not calculated until reconciliation is run.")
         return
 
+    st.write("Configuration used for this result")
+    st.table([reconciliation_configuration(result)])
+
     anomalies = result.anomalies
     filters = st.columns(4)
     platforms = filters[0].multiselect(
         "Filter by platform",
         sorted({item.platform for item in anomalies}),
+        key="platform-filter",
     )
     codes = filters[1].multiselect(
         "Filter by anomaly code",
         sorted({item.anomaly_code.value for item in anomalies}),
+        key="anomaly-code-filter",
     )
     severities = filters[2].multiselect(
         "Filter by severity",
         sorted({item.severity.value for item in anomalies}),
+        key="severity-filter",
     )
     statuses = filters[3].multiselect(
         "Filter by review status",
         sorted({item.review_status.value for item in anomalies}),
+        key="review-status-filter",
     )
     filtered = filter_anomalies(
         anomalies,
@@ -228,6 +308,7 @@ def _render_anomaly_dashboard() -> None:
             "Select an anomaly to inspect",
             options=(None, *(item.anomaly_id for item in filtered)),
             format_func=lambda value: "Choose an anomaly" if value is None else value,
+            key="anomaly-selection",
         )
         if selected_id is not None:
             selected = next(item for item in filtered if item.anomaly_id == selected_id)
@@ -302,12 +383,16 @@ def render_app() -> None:
     )
     st.subheader("1. Upload dataset")
     st.write("Required files: " + ", ".join(f"`{name}`" for name in REQUIRED_FILENAMES))
-    uploads = st.file_uploader(
+    uploads = tuple(st.file_uploader(
         "Choose the five required CSV files",
         type=("csv",),
         accept_multiple_files=True,
         help="Upload exactly one orders, payments, shipments, returns, and refunds CSV.",
-    )
+    ) or ())
+    current_upload_signature = upload_signature(uploads)
+    if st.session_state.current_upload_signature != current_upload_signature:
+        _invalidate_upload_state()
+        st.session_state.current_upload_signature = current_upload_signature
     selection = inspect_uploads(uploads)
     if selection.missing:
         st.warning("Missing files: " + ", ".join(selection.missing))
@@ -317,25 +402,28 @@ def render_app() -> None:
         st.error("Unexpected filenames: " + ", ".join(selection.unexpected))
     if uploads and selection.is_complete:
         st.success("All five required CSV files are ready for validation.")
-        signature = upload_signature(uploads)
-        if st.session_state.upload_signature != signature:
-            st.session_state.upload_signature = signature
-            st.session_state.validation_result = None
-            st.session_state.reconciliation_result = None
-            st.session_state.persistence_outcome = None
         if st.button("Validate dataset"):
+            st.session_state.validation_result = None
+            st.session_state.validated_upload_signature = None
+            _invalidate_reconciliation_state()
             try:
                 st.session_state.validation_result = validate_uploads(uploads)
-                st.session_state.reconciliation_result = None
             except (OSError, TypeError, ValueError) as error:
                 st.error(f"Dataset validation could not run: {error}")
+            else:
+                st.session_state.validated_upload_signature = (
+                    current_upload_signature
+                )
 
     _render_validation_report()
     st.caption(
         "Local runtime database: "
         f"`{runtime_database_path().resolve()}`. Uploaded CSV files are not kept."
     )
-    _render_reconciliation_controls()
+    _render_reconciliation_controls(
+        selection.is_complete,
+        current_upload_signature,
+    )
     _render_operational_summary()
     _render_anomaly_dashboard()
 

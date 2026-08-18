@@ -9,6 +9,7 @@ from .uploads import (
 )
 from .workflow import (
     build_reconciliation_config,
+    reconciliation_input_signature,
     reconcile_validation_result,
     upload_signature,
     validate_uploads,
@@ -19,6 +20,7 @@ from .presentation import (
     filter_anomalies,
     not_evaluated_rows,
     operational_summary,
+    reconciliation_configuration,
 )
 from .storage import (
     PersistenceOutcome,
@@ -34,6 +36,7 @@ __all__ = [
     "inspect_uploads",
     "stage_uploads",
     "build_reconciliation_config",
+    "reconciliation_input_signature",
     "reconcile_validation_result",
     "upload_signature",
     "validate_uploads",
@@ -42,6 +45,7 @@ __all__ = [
     "filter_anomalies",
     "not_evaluated_rows",
     "operational_summary",
+    "reconciliation_configuration",
     "PersistenceOutcome",
     "change_review_status",
     "persist_and_refresh",

@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import date, time, timedelta
+from datetime import date, datetime, time, timedelta, timezone
 from decimal import Decimal
 from pathlib import Path
 
@@ -12,6 +12,7 @@ import pytest
 from kz_ecomops.ui import (
     REQUIRED_FILENAMES,
     build_reconciliation_config,
+    reconciliation_input_signature,
     reconcile_validation_result,
     upload_signature,
     validate_uploads,
@@ -86,3 +87,23 @@ def test_validation_to_reconciliation_uses_explicit_utc_reference() -> None:
     assert result.reference_at.isoformat() == "2026-03-04T12:00:00+00:00"
     assert len(result.anomalies) == 1
     assert result.anomalies[0].rule_code.value == "REC-02"
+
+
+def test_reconciliation_signature_tracks_exact_business_inputs() -> None:
+    reference_at = datetime(2026, 3, 20, 12, tzinfo=timezone.utc)
+    default = build_reconciliation_config("0.01", 48, 7, "")
+    changed_tolerance = build_reconciliation_config("0.02", 48, 7, "")
+    changed_high = build_reconciliation_config("0.01", 48, 7, "72")
+
+    signature = reconciliation_input_signature(reference_at, default)
+
+    assert signature == reconciliation_input_signature(reference_at, default)
+    assert signature != reconciliation_input_signature(
+        reference_at + timedelta(days=1),
+        default,
+    )
+    assert signature != reconciliation_input_signature(
+        reference_at,
+        changed_tolerance,
+    )
+    assert signature != reconciliation_input_signature(reference_at, changed_high)

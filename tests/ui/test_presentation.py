@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
+from decimal import Decimal
 from pathlib import Path
 
 import pandas as pd
@@ -20,6 +21,7 @@ from kz_ecomops.ui import (
     filter_anomalies,
     not_evaluated_rows,
     operational_summary,
+    reconciliation_configuration,
 )
 from kz_ecomops.validation import validate_dataset_directory
 
@@ -121,3 +123,30 @@ def test_presentation_does_not_modify_validation_dataframes() -> None:
 
     for filename, dataframe in validation.dataframes.items():
         pd.testing.assert_frame_equal(dataframe, originals[filename])
+
+
+def test_result_configuration_uses_stored_values_not_widget_values() -> None:
+    result = ReconciliationResult(
+        REFERENCE_AT,
+        ReconciliationConfig(
+            monetary_tolerance=Decimal("0.020"),
+            shipping_limit=timedelta(hours=36),
+            return_refund_limit=timedelta(days=8),
+            high_shipping_delay_threshold=timedelta(hours=72),
+        ),
+    )
+
+    shown = reconciliation_configuration(result)
+
+    assert shown == {
+        "Reference time UTC": "2026-03-20T12:00:00+00:00",
+        "Monetary tolerance": "0.020 EUR",
+        "Shipping limit": "36 hours",
+        "Return-refund limit": "8 days",
+        "High shipping delay threshold": "72 hours",
+    }
+
+    not_configured = reconciliation_configuration(
+        ReconciliationResult(REFERENCE_AT, ReconciliationConfig())
+    )
+    assert not_configured["High shipping delay threshold"] == "Not configured"

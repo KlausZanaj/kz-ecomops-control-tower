@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Collection, Mapping, Sequence
+from datetime import timedelta, timezone
 from decimal import Decimal
 from types import MappingProxyType
 
@@ -68,6 +69,44 @@ def operational_summary(
             }
         )
     return MappingProxyType(values)
+
+
+def reconciliation_configuration(
+    result: ReconciliationResult,
+) -> Mapping[str, str]:
+    """Present the exact reference time and configuration stored in a result."""
+
+    def whole_duration(value: timedelta, unit: timedelta, label: str) -> str:
+        amount, remainder = divmod(value, unit)
+        if remainder:
+            return str(value)
+        suffix = label if amount == 1 else f"{label}s"
+        return f"{amount} {suffix}"
+
+    high_threshold = result.config.high_shipping_delay_threshold
+    return MappingProxyType(
+        {
+            "Reference time UTC": result.reference_at.astimezone(
+                timezone.utc
+            ).isoformat(),
+            "Monetary tolerance": f"{result.config.monetary_tolerance} EUR",
+            "Shipping limit": whole_duration(
+                result.config.shipping_limit,
+                timedelta(hours=1),
+                "hour",
+            ),
+            "Return-refund limit": whole_duration(
+                result.config.return_refund_limit,
+                timedelta(days=1),
+                "day",
+            ),
+            "High shipping delay threshold": (
+                whole_duration(high_threshold, timedelta(hours=1), "hour")
+                if high_threshold is not None
+                else "Not configured"
+            ),
+        }
+    )
 
 
 def filter_anomalies(

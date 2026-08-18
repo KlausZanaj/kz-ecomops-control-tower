@@ -2,8 +2,11 @@
 
 from __future__ import annotations
 
+from datetime import date, timedelta
+from decimal import Decimal
 from pathlib import Path
 
+import pytest
 from streamlit.testing.v1 import AppTest
 
 from kz_ecomops.validation import CSV_SCHEMAS
@@ -44,6 +47,39 @@ def _button(app: AppTest, label: str):
 
 def _selectbox(app: AppTest, label: str):
     return next(selectbox for selectbox in app.selectbox if selectbox.label == label)
+
+
+def _text_input(app: AppTest, label: str):
+    return next(text_input for text_input in app.text_input if text_input.label == label)
+
+
+def _date_input(app: AppTest, label: str):
+    return next(date_input for date_input in app.date_input if date_input.label == label)
+
+
+def _multiselect(app: AppTest, label: str):
+    return next(item for item in app.multiselect if item.label == label)
+
+
+def _metric_values(app: AppTest) -> dict[str, str]:
+    return {metric.label: str(metric.value) for metric in app.metric}
+
+
+def _validated_app(tmp_path: Path, monkeypatch) -> tuple[AppTest, list[tuple[str, bytes, str]]]:
+    monkeypatch.setenv("KZ_ECOMOPS_DB_PATH", str(tmp_path / "workflow.sqlite3"))
+    uploads = _uploads("scenarios/rec-02-paid-not-shipped-on-time")
+    app = AppTest.from_file(str(PROJECT_ROOT / "app.py")).run(timeout=10)
+    app.file_uploader[0].set_value(uploads).run(timeout=10)
+    _button(app, "Validate dataset").click().run(timeout=10)
+    assert app.session_state["validation_result"] is not None
+    return app, uploads
+
+
+def _reconciled_app(tmp_path: Path, monkeypatch) -> tuple[AppTest, list[tuple[str, bytes, str]]]:
+    app, uploads = _validated_app(tmp_path, monkeypatch)
+    _button(app, "Run reconciliation").click().run(timeout=10)
+    assert app.session_state["reconciliation_result"] is not None
+    return app, uploads
 
 
 def test_app_starts_and_shows_upload_guidance() -> None:
@@ -127,3 +163,151 @@ def test_empty_header_only_dataset_does_not_crash(
     assert metrics["Orders"] == "0"
     assert metrics["Order total"] == "0.00 EUR"
     assert metrics["Anomalies"] == "0"
+
+
+@pytest.mark.parametrize(
+    "selection_change",
+    ("remove-one", "replace-content", "add-duplicate"),
+)
+def test_changed_upload_selection_invalidates_validated_state(
+    tmp_path: Path,
+    monkeypatch,
+    selection_change: str,
+) -> None:
+    app, uploads = _validated_app(tmp_path, monkeypatch)
+    assert not _button(app, "Run reconciliation").disabled
+
+    changed = list(uploads)
+    if selection_change == "remove-one":
+        changed.pop()
+    elif selection_change == "replace-content":
+        filename, content, media_type = changed[0]
+        changed[0] = (filename, content + b"\n", media_type)
+    else:
+        changed.append(uploads[0])
+    app.file_uploader[0].set_value(changed).run(timeout=10)
+
+    assert app.session_state["validation_result"] is None
+    assert app.session_state["reconciliation_result"] is None
+    assert app.session_state["persistence_outcome"] is None
+    assert _button(app, "Run reconciliation").disabled
+    assert _metric_values(app)["Anomalies"] == "Not calculated"
+    assert not any("Ready for reconciliation" in item.value for item in app.success)
+    assert len(app.multiselect) == 0
+
+
+def test_removing_all_uploads_invalidates_reconciled_state(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    app, _ = _reconciled_app(tmp_path, monkeypatch)
+    assert _metric_values(app)["Anomalies"] == "1"
+    assert len(app.multiselect) == 4
+
+    app.file_uploader[0].set_value([]).run(timeout=10)
+
+    assert app.session_state["validation_result"] is None
+    assert app.session_state["reconciliation_result"] is None
+    assert app.session_state["persistence_outcome"] is None
+    assert app.session_state["reconciliation_signature"] is None
+    assert _button(app, "Run reconciliation").disabled
+    assert _metric_values(app)["Anomalies"] == "Not calculated"
+    assert len(app.multiselect) == 0
+    assert any("Missing files:" in warning.value for warning in app.warning)
+
+
+@pytest.mark.parametrize(
+    ("widget", "value"),
+    (
+        ("date", date(2026, 3, 21)),
+        ("tolerance", "0.02"),
+        ("high-threshold", "72"),
+    ),
+)
+def test_configuration_change_invalidates_completed_result_without_rerunning(
+    tmp_path: Path,
+    monkeypatch,
+    widget: str,
+    value: object,
+) -> None:
+    app, _ = _reconciled_app(tmp_path, monkeypatch)
+    assert app.session_state["persistence_outcome"] is not None
+
+    if widget == "date":
+        _date_input(app, "Reference date (UTC)").set_value(value).run(timeout=10)
+    elif widget == "tolerance":
+        _text_input(app, "Monetary tolerance (EUR)").set_value(value).run(timeout=10)
+    else:
+        _text_input(
+            app,
+            "High shipping delay threshold (whole hours, optional)",
+        ).set_value(value).run(timeout=10)
+
+    assert app.session_state["validation_result"] is not None
+    assert app.session_state["reconciliation_result"] is None
+    assert app.session_state["persistence_outcome"] is None
+    assert app.session_state["reconciliation_signature"] is None
+    assert not _button(app, "Run reconciliation").disabled
+    assert _metric_values(app)["Anomalies"] == "Not calculated"
+    assert len(app.multiselect) == 0
+    assert any(
+        "Anomalies are not calculated" in info.value
+        for info in app.info
+    )
+
+
+def test_rerun_after_configuration_change_uses_updated_inputs(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    app, _ = _reconciled_app(tmp_path, monkeypatch)
+    _date_input(app, "Reference date (UTC)").set_value(date(2026, 3, 21)).run(
+        timeout=10
+    )
+    _text_input(app, "Monetary tolerance (EUR)").set_value("0.02").run(timeout=10)
+    _text_input(
+        app,
+        "High shipping delay threshold (whole hours, optional)",
+    ).set_value("72").run(timeout=10)
+    assert app.session_state["reconciliation_result"] is None
+
+    _button(app, "Run reconciliation").click().run(timeout=10)
+
+    result = app.session_state["reconciliation_result"]
+    assert result.reference_at.isoformat() == "2026-03-21T12:00:00+00:00"
+    assert result.config.monetary_tolerance == Decimal("0.02")
+    assert result.config.high_shipping_delay_threshold == timedelta(hours=72)
+    assert app.session_state["reconciliation_signature"] is not None
+    assert any(
+        "Configuration used for this result" in item.value
+        for item in app.markdown
+    )
+
+
+def test_filter_change_keeps_completed_result_current(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    app, _ = _reconciled_app(tmp_path, monkeypatch)
+    result = app.session_state["reconciliation_result"]
+    signature = app.session_state["reconciliation_signature"]
+
+    _multiselect(app, "Filter by platform").set_value(["shopify"]).run(timeout=10)
+
+    assert app.session_state["reconciliation_result"] == result
+    assert app.session_state["reconciliation_signature"] == signature
+    assert _metric_values(app)["Anomalies"] == "1"
+
+
+def test_new_validation_always_invalidates_previous_reconciliation(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    app, _ = _reconciled_app(tmp_path, monkeypatch)
+
+    _button(app, "Validate dataset").click().run(timeout=10)
+
+    assert app.session_state["validation_result"] is not None
+    assert app.session_state["reconciliation_result"] is None
+    assert app.session_state["persistence_outcome"] is None
+    assert _metric_values(app)["Anomalies"] == "Not calculated"

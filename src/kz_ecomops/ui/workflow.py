@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import json
 from collections.abc import Iterable
 from datetime import date, datetime, time, timedelta, timezone
 from decimal import Decimal, InvalidOperation
@@ -28,6 +29,40 @@ def upload_signature(uploads: Iterable[UploadedCsv]) -> str:
         digest.update(content)
         digest.update(b"\0")
     return digest.hexdigest()
+
+
+def reconciliation_input_signature(
+    reference_at: datetime,
+    config: ReconciliationConfig,
+) -> str:
+    """Identify the exact deterministic inputs used for one reconciliation."""
+
+    if not isinstance(reference_at, datetime):
+        raise TypeError("reference_at must be a datetime.")
+    if reference_at.tzinfo is None or reference_at.utcoffset() is None:
+        raise ValueError("reference_at must include a timezone.")
+    if not isinstance(config, ReconciliationConfig):
+        raise TypeError("config must be a ReconciliationConfig.")
+
+    def duration_parts(value: timedelta | None) -> tuple[int, int, int] | None:
+        if value is None:
+            return None
+        return value.days, value.seconds, value.microseconds
+
+    material = json.dumps(
+        {
+            "reference_at": reference_at.astimezone(timezone.utc).isoformat(),
+            "monetary_tolerance": str(config.monetary_tolerance),
+            "shipping_limit": duration_parts(config.shipping_limit),
+            "return_refund_limit": duration_parts(config.return_refund_limit),
+            "high_shipping_delay_threshold": duration_parts(
+                config.high_shipping_delay_threshold
+            ),
+        },
+        sort_keys=True,
+        separators=(",", ":"),
+    ).encode("utf-8")
+    return hashlib.sha256(material).hexdigest()
 
 
 def validate_uploads(uploads: Iterable[UploadedCsv]) -> DatasetValidationResult:
