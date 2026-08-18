@@ -28,6 +28,7 @@ from .storage import (
     persist_and_refresh,
     runtime_database_path,
 )
+from .reporting import FilteredAnomalyReport, build_filtered_anomaly_report
 
 __all__ = [
     "REQUIRED_FILENAMES",
@@ -50,4 +51,6 @@ __all__ = [
     "change_review_status",
     "persist_and_refresh",
     "runtime_database_path",
+    "FilteredAnomalyReport",
+    "build_filtered_anomaly_report",
 ]

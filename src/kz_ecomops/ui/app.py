@@ -2,23 +2,32 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from datetime import date, datetime, time, timezone
 
 import streamlit as st
 
-from kz_ecomops.reconciliation import ReviewStatus
-from kz_ecomops.reporting import AnomalyDistributions, anomaly_distributions
+from kz_ecomops.reconciliation import (
+    ReconciliationAnomaly,
+    ReconciliationResult,
+    ReviewStatus,
+)
+from kz_ecomops.reporting import (
+    AnomalyCsvExport,
+    AnomalyDistributions,
+    anomaly_distributions,
+)
 from kz_ecomops.validation import ValidationMessage, ValidationStage
 
 from .uploads import REQUIRED_FILENAMES, inspect_uploads
 from .presentation import (
     anomaly_detail,
     anomaly_table_rows,
-    filter_anomalies,
     not_evaluated_rows,
     operational_summary,
     reconciliation_configuration,
 )
+from .reporting import build_filtered_anomaly_report
 from .workflow import (
     build_reconciliation_config,
     reconciliation_input_signature,
@@ -38,6 +47,7 @@ SUBTITLE = "Multi-channel order reconciliation and e-commerce operations analyti
 _RESULT_WIDGET_KEYS = {
     "anomaly-code-filter",
     "anomaly-selection",
+    "filtered-anomaly-download",
     "platform-filter",
     "review-status-filter",
     "severity-filter",
@@ -276,8 +286,8 @@ def _distribution_rows(
 
 
 def _render_anomaly_distributions(
-    all_anomalies,
-    filtered_anomalies,
+    all_anomalies: Sequence[ReconciliationAnomaly],
+    filtered_anomalies: Sequence[ReconciliationAnomaly],
 ) -> None:
     all_counts = anomaly_distributions(all_anomalies)
     filtered_counts = anomaly_distributions(filtered_anomalies)
@@ -304,6 +314,33 @@ def _render_anomaly_distributions(
             st.dataframe(filtered_rows, hide_index=True, width="stretch")
         else:
             st.info("The current filters match zero anomalies.")
+
+
+def _render_filtered_export(
+    result: ReconciliationResult,
+    export: AnomalyCsvExport,
+) -> None:
+    st.subheader("Filtered CSV export")
+    if export.row_count == 0:
+        st.info(
+            "The current filters match zero anomalies. The CSV will contain "
+            "the header only."
+        )
+    st.write(f"Rows to export: **{export.row_count}**")
+    st.write(f"Filename: `{export.filename}`")
+    st.write(
+        "Result reference UTC: "
+        f"`{result.reference_at.astimezone(timezone.utc).isoformat()}`"
+    )
+    st.caption("The download contains only anomalies matching all current filters.")
+    st.download_button(
+        "Download filtered anomalies CSV",
+        data=export.content,
+        file_name=export.filename,
+        mime="text/csv; charset=utf-8",
+        key="filtered-anomaly-download",
+        on_click="ignore",
+    )
 
 
 def _render_anomaly_dashboard() -> None:
@@ -338,15 +375,17 @@ def _render_anomaly_dashboard() -> None:
         sorted({item.review_status.value for item in anomalies}),
         key="review-status-filter",
     )
-    filtered = filter_anomalies(
-        anomalies,
+    reporting_view = build_filtered_anomaly_report(
+        result,
         platforms=platforms,
         anomaly_codes=codes,
         severities=severities,
         review_statuses=statuses,
     )
+    filtered = reporting_view.anomalies
     _render_anomaly_distributions(anomalies, filtered)
     st.caption(f"Showing {len(filtered)} of {len(anomalies)} anomalies.")
+    _render_filtered_export(result, reporting_view.export)
     if filtered:
         st.dataframe(
             anomaly_table_rows(filtered),

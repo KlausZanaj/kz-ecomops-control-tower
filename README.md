@@ -4,9 +4,9 @@ Multi-channel order reconciliation and e-commerce operations analytics.
 
 ## Project status
 
-**Phase 6 complete: Streamlit reconciliation and review interface implemented**
+**Phase 7 complete: operational reporting and filtered CSV export implemented**
 
-The project now provides deterministic synthetic datasets, documented simulated exports for four platforms, canonical normalization, complete five-file validation, all ten reconciliation rules, explainable anomaly results, idempotent local SQLite persistence, and an accessible Streamlit workflow. Filtered CSV export is not implemented yet and remains planned for Phase 7.
+The project now provides deterministic synthetic datasets, documented simulated exports for four platforms, canonical normalization, complete five-file validation, all ten reconciliation rules, explainable anomaly results, idempotent local SQLite persistence, an accessible Streamlit workflow, operational anomaly distributions, and spreadsheet-safe filtered CSV export. Phase 8 remains the final testing, performance, and documentation block before the MVP is declared complete.
 
 ## The problem
 
@@ -96,6 +96,7 @@ The Streamlit interface provides the complete non-technical MVP path after the a
 5. Run reconciliation only when validation reports `Ready for reconciliation`.
 6. Review operational indicators, filter anomalies, inspect compared values and record references, and review checks that could not be evaluated.
 7. Change an anomaly review status between `open`, `in_review`, `resolved`, and `dismissed`.
+8. Compare complete and filtered anomaly distributions, then download exactly the currently filtered anomalies as CSV.
 
 Uploaded CSV files are staged only in an automatically deleted temporary directory. They are never copied into the repository or retained by the application. Use only synthetic or explicitly authorized data; the MVP accepts EUR only.
 
@@ -106,6 +107,42 @@ Validated canonical records and reconciliation anomalies are stored locally in:
 ```
 
 The `.runtime/` directory and all SQLite files are ignored by Git. Reconciliation persistence is idempotent, and a saved review status survives a later reconciliation of the same anomaly.
+
+## Operational reporting and CSV export
+
+The anomaly dashboard shows deterministic counts for anomaly code, severity, platform, and review status. Each dimension is displayed for both the complete reconciliation result and the anomalies matching all current filters. A zero count is shown as zero; unavailable results remain explicitly marked as not calculated.
+
+`Download filtered anomalies CSV` exports exactly the anomalies visible through the current combined filters, including updated review statuses. If the filters match no anomalies, the download remains a valid header-only CSV with zero data rows. The download is unavailable whenever there is no current reconciliation result, including after an upload or configuration change invalidates an older result.
+
+The CSV is generated entirely in memory and never written to the repository or runtime directory. Its deterministic filename is derived from the result reference time:
+
+```text
+kz-ecomops-anomalies-YYYYMMDD-HHMMSSZ.csv
+```
+
+The file uses UTF-8 with a BOM for compatibility with common Windows spreadsheet installations. Text beginning with a spreadsheet formula marker is prefixed with an apostrophe, while JSON, ISO date-times, decimal money, and duration fields retain their unambiguous formats.
+
+The immutable CSV column order is:
+
+1. `anomaly_id`
+2. `rule_code`
+3. `anomaly_code`
+4. `order_id`
+5. `platform`
+6. `problem_type`
+7. `description`
+8. `severity`
+9. `detected_at`
+10. `recommended_action`
+11. `review_status`
+12. `compared_values_json`
+13. `record_references_json`
+14. `reference_at`
+15. `monetary_tolerance`
+16. `currency`
+17. `shipping_limit_hours`
+18. `return_refund_limit_days`
+19. `high_shipping_delay_threshold_hours`
 
 ## Implemented reconciliation rules
 
@@ -178,7 +215,7 @@ From the project root, start Streamlit with the virtual-environment interpreter.
 
 The browser interface can be used without further terminal commands. For a ready demonstration, upload the five files from `data/sample/normalized/valid/` or one complete directory under `data/sample/scenarios/`. Intentionally invalid examples under `data/sample/invalid/` demonstrate blocking reports.
 
-Current MVP limits remain explicit: no real platform integrations, authentication, cloud deployment, item-level partial-order reconciliation, or CSV anomaly export. Filtered CSV export is scheduled for Phase 7.
+Current MVP limits remain explicit: no real platform integrations, authentication, cloud deployment, or item-level partial-order reconciliation. Final performance checks and documentation review remain scheduled for Phase 8.
 
 ## Running the tests
 
@@ -218,8 +255,8 @@ All data included in this public project will be entirely synthetic. Real custom
 5. Data normalization and local SQLite storage — completed.
 6. Order reconciliation engine — completed.
 7. Streamlit user interface — completed.
-8. CSV exports and operational reporting — planned for Phase 7.
-9. Testing, performance checks, and final documentation.
+8. CSV exports and operational reporting — completed in Phase 7.
+9. Final testing, performance checks, and documentation — planned as Phase 8, the last MVP block.
 
 KPI analytics, inventory optimization, real platform APIs, authentication, and cloud deployment are planned only for future versions.
 
@@ -229,4 +266,4 @@ This project is intended to be released under the [MIT License](LICENSE).
 
 ## Introduzione in italiano
 
-KZ EcomOps Control Tower è un progetto dimostrativo per il controllo operativo di un e-commerce multicanale. Sono ora disponibili dati interamente sintetici, validazione, normalizzazione, tutte le regole `REC-01`–`REC-10`, persistenza SQLite idempotente e un'interfaccia Streamlit completa per caricare i cinque CSV, eseguire la riconciliazione e aggiornare lo stato delle anomalie. L'esportazione CSV finale non è ancora implementata ed è prevista nella Fase 7.
+KZ EcomOps Control Tower è un progetto dimostrativo per il controllo operativo di un e-commerce multicanale. Sono ora disponibili dati interamente sintetici, validazione, normalizzazione, tutte le regole `REC-01`–`REC-10`, persistenza SQLite idempotente, un'interfaccia Streamlit completa, distribuzioni operative ed esportazione CSV filtrata. La Fase 8 rimane l'ultimo blocco di test, prestazioni e revisione documentale prima del completamento dell'MVP.

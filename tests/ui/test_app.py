@@ -95,6 +95,7 @@ def test_app_starts_and_shows_upload_guidance() -> None:
     assert len(app.file_uploader) == 1
     assert any("Missing files:" in warning.value for warning in app.warning)
     assert _button(app, "Run reconciliation").disabled
+    assert len(app.download_button) == 0
 
 
 def test_valid_upload_validation_reconciliation_and_review_path(
@@ -122,6 +123,14 @@ def test_valid_upload_validation_reconciliation_and_review_path(
     metrics = {metric.label: str(metric.value) for metric in app.metric}
     assert metrics["Anomalies"] == "1"
     assert len(app.multiselect) == 4
+    assert len(app.download_button) == 1
+    download = app.download_button[0]
+    assert download.label == "Download filtered anomalies CSV"
+    assert download.proto.ignore_rerun
+    assert any(
+        "kz-ecomops-anomalies-20260320-120000Z.csv" in item.value
+        for item in app.markdown
+    )
 
     anomaly_id = result.anomalies[0].anomaly_id
     _selectbox(app, "Select an anomaly to inspect").set_value(anomaly_id).run(timeout=10)
@@ -194,6 +203,7 @@ def test_changed_upload_selection_invalidates_validated_state(
     assert _metric_values(app)["Anomalies"] == "Not calculated"
     assert not any("Ready for reconciliation" in item.value for item in app.success)
     assert len(app.multiselect) == 0
+    assert len(app.download_button) == 0
 
 
 def test_removing_all_uploads_invalidates_reconciled_state(
@@ -213,6 +223,7 @@ def test_removing_all_uploads_invalidates_reconciled_state(
     assert _button(app, "Run reconciliation").disabled
     assert _metric_values(app)["Anomalies"] == "Not calculated"
     assert len(app.multiselect) == 0
+    assert len(app.download_button) == 0
     assert any("Missing files:" in warning.value for warning in app.warning)
 
 
@@ -250,6 +261,7 @@ def test_configuration_change_invalidates_completed_result_without_rerunning(
     assert not _button(app, "Run reconciliation").disabled
     assert _metric_values(app)["Anomalies"] == "Not calculated"
     assert len(app.multiselect) == 0
+    assert len(app.download_button) == 0
     assert any(
         "Anomalies are not calculated" in info.value
         for info in app.info
@@ -291,12 +303,15 @@ def test_filter_change_keeps_completed_result_current(
     app, _ = _reconciled_app(tmp_path, monkeypatch)
     result = app.session_state["reconciliation_result"]
     signature = app.session_state["reconciliation_signature"]
+    persistence = app.session_state["persistence_outcome"]
 
     _multiselect(app, "Filter by platform").set_value(["shopify"]).run(timeout=10)
 
     assert app.session_state["reconciliation_result"] == result
     assert app.session_state["reconciliation_signature"] == signature
+    assert app.session_state["persistence_outcome"] == persistence
     assert _metric_values(app)["Anomalies"] == "1"
+    assert len(app.download_button) == 1
 
 
 def test_new_validation_always_invalidates_previous_reconciliation(
@@ -311,6 +326,7 @@ def test_new_validation_always_invalidates_previous_reconciliation(
     assert app.session_state["reconciliation_result"] is None
     assert app.session_state["persistence_outcome"] is None
     assert _metric_values(app)["Anomalies"] == "Not calculated"
+    assert len(app.download_button) == 0
 
 
 def test_operational_distributions_follow_current_filters(
@@ -333,3 +349,36 @@ def test_operational_distributions_follow_current_filters(
     assert metrics["All anomalies"] == "1"
     assert metrics["Filtered anomalies"] == "1"
     assert app.session_state["reconciliation_result"] is not None
+
+
+def test_zero_anomaly_result_downloads_header_only_report(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    monkeypatch.setenv("KZ_ECOMOPS_DB_PATH", str(tmp_path / "empty-export.sqlite3"))
+    app = AppTest.from_file(str(PROJECT_ROOT / "app.py")).run(timeout=10)
+    app.file_uploader[0].set_value(_empty_uploads()).run(timeout=10)
+    _button(app, "Validate dataset").click().run(timeout=10)
+    _button(app, "Run reconciliation").click().run(timeout=10)
+
+    assert len(app.download_button) == 1
+    assert any(
+        "CSV will contain the header only" in info.value
+        for info in app.info
+    )
+    assert any("Rows to export: **0**" in item.value for item in app.markdown)
+
+
+def test_download_does_not_rerun_or_persist_business_workflow(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    app, _ = _reconciled_app(tmp_path, monkeypatch)
+    result = app.session_state["reconciliation_result"]
+    persistence = app.session_state["persistence_outcome"]
+
+    app.download_button[0].click().run(timeout=10)
+
+    assert app.session_state["reconciliation_result"] == result
+    assert app.session_state["persistence_outcome"] == persistence
+    assert len(app.download_button) == 1
