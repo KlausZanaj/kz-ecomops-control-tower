@@ -311,3 +311,25 @@ def test_new_validation_always_invalidates_previous_reconciliation(
     assert app.session_state["reconciliation_result"] is None
     assert app.session_state["persistence_outcome"] is None
     assert _metric_values(app)["Anomalies"] == "Not calculated"
+
+
+def test_operational_distributions_follow_current_filters(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    app, _ = _reconciled_app(tmp_path, monkeypatch)
+    metrics = _metric_values(app)
+
+    assert metrics["All anomalies"] == "1"
+    assert metrics["Filtered anomalies"] == "1"
+    assert any(
+        item.value == "Operational anomaly distributions"
+        for item in app.subheader
+    )
+
+    _multiselect(app, "Filter by platform").set_value(["shopify"]).run(timeout=10)
+
+    metrics = _metric_values(app)
+    assert metrics["All anomalies"] == "1"
+    assert metrics["Filtered anomalies"] == "1"
+    assert app.session_state["reconciliation_result"] is not None

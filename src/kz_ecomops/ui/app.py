@@ -7,6 +7,7 @@ from datetime import date, datetime, time, timezone
 import streamlit as st
 
 from kz_ecomops.reconciliation import ReviewStatus
+from kz_ecomops.reporting import AnomalyDistributions, anomaly_distributions
 from kz_ecomops.validation import ValidationMessage, ValidationStage
 
 from .uploads import REQUIRED_FILENAMES, inspect_uploads
@@ -258,6 +259,53 @@ def _render_operational_summary() -> None:
         column.metric(label, summary[label])
 
 
+def _distribution_rows(
+    distributions: AnomalyDistributions,
+) -> list[dict[str, str | int]]:
+    dimensions = (
+        ("Anomaly code", distributions.by_anomaly_code),
+        ("Severity", distributions.by_severity),
+        ("Platform", distributions.by_platform),
+        ("Review status", distributions.by_review_status),
+    )
+    return [
+        {"Dimension": dimension, "Value": value, "Count": count}
+        for dimension, values in dimensions
+        for value, count in values.items()
+    ]
+
+
+def _render_anomaly_distributions(
+    all_anomalies,
+    filtered_anomalies,
+) -> None:
+    all_counts = anomaly_distributions(all_anomalies)
+    filtered_counts = anomaly_distributions(filtered_anomalies)
+    st.subheader("Operational anomaly distributions")
+    all_metric, filtered_metric = st.columns(2)
+    all_metric.metric("All anomalies", all_counts.total_count)
+    filtered_metric.metric("Filtered anomalies", filtered_counts.total_count)
+    st.caption(
+        "Counts are shown for the complete result and for the current combined "
+        "filters. Review-status counts use the latest saved status."
+    )
+    all_column, filtered_column = st.columns(2)
+    with all_column:
+        st.write("All anomaly distributions")
+        all_rows = _distribution_rows(all_counts)
+        if all_rows:
+            st.dataframe(all_rows, hide_index=True, width="stretch")
+        else:
+            st.info("The current reconciliation contains zero anomalies.")
+    with filtered_column:
+        st.write("Filtered anomaly distributions")
+        filtered_rows = _distribution_rows(filtered_counts)
+        if filtered_rows:
+            st.dataframe(filtered_rows, hide_index=True, width="stretch")
+        else:
+            st.info("The current filters match zero anomalies.")
+
+
 def _render_anomaly_dashboard() -> None:
     result = st.session_state.reconciliation_result
     st.subheader("3. Reconciliation results")
@@ -297,6 +345,7 @@ def _render_anomaly_dashboard() -> None:
         severities=severities,
         review_statuses=statuses,
     )
+    _render_anomaly_distributions(anomalies, filtered)
     st.caption(f"Showing {len(filtered)} of {len(anomalies)} anomalies.")
     if filtered:
         st.dataframe(
