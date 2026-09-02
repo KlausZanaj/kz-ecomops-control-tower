@@ -78,9 +78,11 @@ _PRIVATE_KEY_PATTERN = re.compile(
 )
 _WINDOWS_USER_PATH = re.compile(
     r"(?i)\b[A-Z]:[\\/](?:Users|Documents and Settings)[\\/]"
-    r"[^\\/\s'\"<>]+"
+    r"(?P<username>[^\\/\s'\"<>]+)"
 )
-_POSIX_USER_PATH = re.compile(r"/(?:home|Users)/[^/\s'\"<>]+")
+_POSIX_USER_PATH = re.compile(
+    r"/(?:home|Users)/(?P<username>[^/\s'\"<>]+)"
+)
 _EMAIL_PATTERN = re.compile(
     r"\b[A-Za-z0-9.!#$%&'*+/=?^_`{|}~-]+@"
     r"[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b"
@@ -243,12 +245,18 @@ def _content_findings(
             findings.append(
                 AuditFinding("credential_pattern", path.as_posix(), position, commit)
             )
-        if _WINDOWS_USER_PATH.search(line) or _POSIX_USER_PATH.search(line):
+        user_path_matches = (
+            *_WINDOWS_USER_PATH.finditer(line),
+            *_POSIX_USER_PATH.finditer(line),
+        )
+        if user_path_matches:
             findings.append(
                 AuditFinding("absolute_local_path", path.as_posix(), position, commit)
             )
-        casefolded = line.casefold()
-        if any(username in casefolded for username in local_usernames):
+        path_usernames = {
+            match.group("username").casefold() for match in user_path_matches
+        }
+        if path_usernames & local_usernames:
             findings.append(
                 AuditFinding("local_username", path.as_posix(), position, commit)
             )
