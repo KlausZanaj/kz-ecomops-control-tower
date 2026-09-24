@@ -1,0 +1,77 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1440" height="760" viewBox="0 0 1440 760" role="img" aria-labelledby="title desc">
+  <title id="title">Flusso operativo di KZ EcomOps Control Tower</title>
+  <desc id="desc">Cinque file CSV vengono validati, riconciliati con dieci regole e trasformati in anomalie spiegabili e azioni operative.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#071a2f"/>
+      <stop offset="1" stop-color="#0d3550"/>
+    </linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="12" stdDeviation="14" flood-color="#00101d" flood-opacity="0.28"/>
+    </filter>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#53c7df"/>
+    </marker>
+  </defs>
+  <rect width="1440" height="760" rx="28" fill="url(#bg)"/>
+  <circle cx="1310" cy="90" r="190" fill="#1c6f87" opacity="0.16"/>
+  <circle cx="90" cy="690" r="170" fill="#27a6c4" opacity="0.10"/>
+
+  <text x="80" y="86" fill="#ffffff" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="42" font-weight="700">Dal dato grezzo all’azione operativa</text>
+  <text x="80" y="126" fill="#a9c9d8" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="21">Un controllo locale e deterministico su ordini, pagamenti, spedizioni, resi e rimborsi.</text>
+
+  <g filter="url(#shadow)">
+    <rect x="76" y="185" width="320" height="410" rx="24" fill="#ffffff"/>
+    <rect x="560" y="185" width="320" height="410" rx="24" fill="#ffffff"/>
+    <rect x="1044" y="185" width="320" height="410" rx="24" fill="#ffffff"/>
+  </g>
+
+  <circle cx="124" cy="235" r="25" fill="#dff5fa"/>
+  <text x="124" y="243" text-anchor="middle" fill="#0a6d84" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="22" font-weight="700">1</text>
+  <text x="164" y="243" fill="#0b2d46" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="27" font-weight="700">Carica i dati</text>
+  <text x="116" y="293" fill="#5b7384" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="18">Cinque CSV canonici</text>
+
+  <g font-family="Inter,Segoe UI,Arial,sans-serif" font-size="17" fill="#173f57">
+    <rect x="116" y="322" width="240" height="43" rx="9" fill="#edf7fa"/><text x="136" y="350">orders.csv</text>
+    <rect x="116" y="374" width="240" height="43" rx="9" fill="#edf7fa"/><text x="136" y="402">payments.csv</text>
+    <rect x="116" y="426" width="240" height="43" rx="9" fill="#edf7fa"/><text x="136" y="454">shipments.csv</text>
+    <rect x="116" y="478" width="240" height="43" rx="9" fill="#edf7fa"/><text x="136" y="506">returns.csv</text>
+    <rect x="116" y="530" width="240" height="43" rx="9" fill="#edf7fa"/><text x="136" y="558">refunds.csv</text>
+  </g>
+
+  <circle cx="608" cy="235" r="25" fill="#dff5fa"/>
+  <text x="608" y="243" text-anchor="middle" fill="#0a6d84" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="22" font-weight="700">2</text>
+  <text x="648" y="243" fill="#0b2d46" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="27" font-weight="700">Controlla e confronta</text>
+  <g font-family="Inter,Segoe UI,Arial,sans-serif">
+    <rect x="600" y="298" width="240" height="74" rx="14" fill="#edf7fa"/>
+    <text x="620" y="328" fill="#0b2d46" font-size="18" font-weight="700">Validazione</text>
+    <text x="620" y="353" fill="#5b7384" font-size="15">Formato, campi e collegamenti</text>
+    <rect x="600" y="391" width="240" height="74" rx="14" fill="#edf7fa"/>
+    <text x="620" y="421" fill="#0b2d46" font-size="18" font-weight="700">Riconciliazione</text>
+    <text x="620" y="446" fill="#5b7384" font-size="15">REC-01 → REC-10</text>
+    <rect x="600" y="484" width="240" height="74" rx="14" fill="#edf7fa"/>
+    <text x="620" y="514" fill="#0b2d46" font-size="18" font-weight="700">Persistenza locale</text>
+    <text x="620" y="539" fill="#5b7384" font-size="15">SQLite senza duplicazioni</text>
+  </g>
+
+  <circle cx="1092" cy="235" r="25" fill="#dff5fa"/>
+  <text x="1092" y="243" text-anchor="middle" fill="#0a6d84" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="22" font-weight="700">3</text>
+  <text x="1132" y="243" fill="#0b2d46" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="27" font-weight="700">Decidi cosa fare</text>
+  <g font-family="Inter,Segoe UI,Arial,sans-serif">
+    <rect x="1084" y="298" width="240" height="74" rx="14" fill="#fff0e8"/>
+    <text x="1104" y="328" fill="#7a3516" font-size="18" font-weight="700">Anomalia spiegata</text>
+    <text x="1104" y="353" fill="#805b48" font-size="15">Problema, gravità e riferimenti</text>
+    <rect x="1084" y="391" width="240" height="74" rx="14" fill="#eef8f0"/>
+    <text x="1104" y="421" fill="#245d37" font-size="18" font-weight="700">Azione consigliata</text>
+    <text x="1104" y="446" fill="#557362" font-size="15">Passo operativo verificabile</text>
+    <rect x="1084" y="484" width="240" height="74" rx="14" fill="#edf3ff"/>
+    <text x="1104" y="514" fill="#294f89" font-size="18" font-weight="700">Revisione ed export</text>
+    <text x="1104" y="539" fill="#587094" font-size="15">Stato, filtri e CSV sicuro</text>
+  </g>
+
+  <line x1="420" y1="390" x2="525" y2="390" stroke="#53c7df" stroke-width="6" marker-end="url(#arrow)"/>
+  <line x1="904" y1="390" x2="1009" y2="390" stroke="#53c7df" stroke-width="6" marker-end="url(#arrow)"/>
+
+  <rect x="250" y="641" width="940" height="60" rx="18" fill="#062139" stroke="#2c7590"/>
+  <text x="720" y="678" text-anchor="middle" fill="#cfeaf2" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="18">Dati sintetici · Elaborazione locale · EUR · Riconciliazione a livello di ordine · Nessuna API live</text>
+</svg>
